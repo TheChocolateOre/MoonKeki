@@ -1,5 +1,6 @@
 plugins {
     id 'java-library'
+    id 'application'
 }
 
 group 'com.github.thechocolateore'
@@ -8,11 +9,16 @@ version '1.0-SNAPSHOT'
 project.ext.lwjglVersion = "3.2.3"
 project.ext.lwjglNatives = "natives-windows"
 
-Property<Integer> property = project.getObjects().property(Integer.class)
-property.set(15)
+task runApp(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = ''
+    allJvmArgs = ["-XX:+UseZGC"]
+}
 
-compileJava {
-    options.release = property
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(15)
+    }
 }
 
 repositories {
