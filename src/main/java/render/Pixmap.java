@@ -115,7 +115,8 @@ public abstract class Pixmap {
      */
     public int getWidth() {
         if (this.isClosed()) {
-            throw new IllegalStateException("This Texture is closed.");
+            throw new IllegalStateException("The underlying Texture of this " +
+                    "Pixmap is closed.");
         }//end if
 
         return this.WIDTH;
@@ -129,7 +130,8 @@ public abstract class Pixmap {
      */
     public int getHeight() {
         if (this.isClosed()) {
-            throw new IllegalStateException("This Texture is closed.");
+            throw new IllegalStateException("The underlying Texture of this " +
+                    "Pixmap is closed.");
         }//end if
 
         return this.HEIGHT;
@@ -192,6 +194,24 @@ public abstract class Pixmap {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.getId());
     }
 
+    float getMinU() {
+        return (float) this.getXOffset() / this.getTexture().getWidth();
+    }
+
+    float getMaxU() {
+        return (float) (this.getXOffset() + this.getWidth()) /
+                this.getTexture().getWidth();
+    }
+
+    float getMinV() {
+        return (float) this.getYOffset() / this.getTexture().getHeight();
+    }
+
+    float getMaxV() {
+        return (float) (this.getYOffset() + this.getHeight()) /
+                this.getTexture().getHeight();
+    }
+
     /**
      * Indicates if the OpenGL texture of this {@link Pixmap} is deleted.
      * @return {@code true} if the OpenGL texture of this {@link Pixmap} is
@@ -216,23 +236,5 @@ public abstract class Pixmap {
     abstract int getId();
     abstract int getXOffset();
     abstract int getYOffset();
-
-    float getMinU() {
-        return (float) this.getXOffset() / this.getTexture().getWidth();
-    }
-
-    float getMaxU() {
-        return (float) (this.getXOffset() + this.getWidth()) /
-                this.getTexture().getWidth();
-    }
-
-    float getMinV() {
-        return (float) this.getYOffset() / this.getTexture().getHeight();
-    }
-
-    float getMaxV() {
-        return (float) (this.getYOffset() + this.getHeight()) /
-                this.getTexture().getHeight();
-    }
 
 }//end class Pixmap
