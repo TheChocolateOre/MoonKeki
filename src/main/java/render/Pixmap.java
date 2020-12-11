@@ -25,14 +25,14 @@ public abstract class Pixmap {
         private final Texture TEXTURE;
 
         /**
-         * The minimum texel (included), in the x-axis (columns), of the {@link
-         * Texture} region this {@link Pxm} represents.
+         * The minimum texel column (included), in the x-axis of the {@link
+         * Texture} this {@link Pxm} region starts from.
          */
         private final int X_OFFSET;
 
         /**
-         * The minimum texel (included), in the y-axis (rows), of the {@link
-         * Texture} region this {@link Pxm} represents.
+         * The minimum texel row (included), in the y-axis of the {@link
+         * Texture} this {@link Pxm} region starts from.
          */
         private final int Y_OFFSET;
 
@@ -120,6 +120,13 @@ public abstract class Pixmap {
             return this.Y_OFFSET;
         }
 
+        /**
+         * Ensures that this {@link Pxm} is open, i.e. {@link #isClosed()}
+         * returns {@code false}, by throwing an exception if its closed. If
+         * this {@link Pxm} is open, this method does nothing.
+         * @throws IllegalStateException If {@link #isClosed()} returns {@code
+         * true}.
+         */
         private void ensureOpen() throws IllegalStateException {
             if (this.isClosed()) {
                 throw new IllegalStateException("The underlying Texture of " +
@@ -310,19 +317,51 @@ public abstract class Pixmap {
         return this.getTexture().getId();
     }
 
+    /**
+     * Gets the minimum texture coordinate in the x-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @return The minimum texture coordinate in the x-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
+     */
     float getMinU() {
         return (float) this.getXOffset() / this.getTexture().getWidth();
     }
 
+    /**
+     * Gets the maximum texture coordinate in the x-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @return The maximum texture coordinate in the x-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
+     */
     float getMaxU() {
         return (float) (this.getXOffset() + this.getWidth()) /
                 this.getTexture().getWidth();
     }
 
+    /**
+     * Gets the minimum texture coordinate in the y-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @return The minimum texture coordinate in the y-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
+     */
     float getMinV() {
         return (float) this.getYOffset() / this.getTexture().getHeight();
     }
 
+    /**
+     * Gets the maximum texture coordinate in the y-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @return The maximum texture coordinate in the y-axis, that defines the
+     * region of this {@link Pixmap} on the underlying OpenGL texture.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
+     */
     float getMaxV() {
         return (float) (this.getYOffset() + this.getHeight()) /
                 this.getTexture().getHeight();
@@ -333,6 +372,8 @@ public abstract class Pixmap {
      * i.e. contains no colors.
      * @return {@code true} if the area of the region of this {@link Pixmap} is
      * 0 texels^2, otherwise {@code false}.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
      */
     boolean isEmpty() {
         this.ensureOpen();
@@ -351,11 +392,34 @@ public abstract class Pixmap {
      * @return The underlying {@link Texture} of this {@link Pixmap} or {@code
      * null} if this {@link Pixmap} is empty, i.e. it's total area is 0
      * texels^2.
+     * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
+     * {@link #isClosed()} returns {@code true}.
      */
     abstract Texture getTexture();
+
+    /**
+     * Gets the minimum texel column (included), in the x-axis of the {@link
+     * Texture} this {@link Pixmap} region starts from.
+     * @return The minimum texel column (included), in the x-axis of the {@link
+     * Texture} this {@link Pixmap} region starts from.
+     */
     abstract int getXOffset();
+
+    /**
+     * Gets the minimum texel row (included), in the y-axis of the {@link
+     * Texture} this {@link Pixmap} region starts from.
+     * @return The minimum texel row (included), in the y-axis of the {@link
+     * Texture} this {@link Pixmap} region starts from.
+     */
     abstract int getYOffset();
 
+    /**
+     * Ensures that this {@link Pixmap} is open, i.e. {@link #isClosed()}
+     * returns {@code false}, by throwing an exception if its closed. If this
+     * {@link Pixmap} is open, this method does nothing.
+     * @throws IllegalStateException If {@link #isClosed()} returns {@code
+     * true}.
+     */
     private void ensureOpen() throws IllegalStateException {
         if (this.isClosed()) {
             throw new IllegalStateException("The underlying Texture of this " +
