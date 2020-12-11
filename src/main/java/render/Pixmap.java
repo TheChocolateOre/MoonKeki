@@ -141,15 +141,60 @@ public abstract class Pixmap {
      * contains no colors.
      */
     public static final Pixmap EMPTY = new Pixmap(0, 0) {
-        @Override public boolean isClosed() {return false;}
-        @Override Texture getTexture() {return null;}
-        @Override int getId() {return 0;}
-        @Override int getXOffset() {return 0;}
-        @Override int getYOffset() {return 0;}
-        @Override float getMinU() {return 0.0f;}
-        @Override float getMaxU() {return 0.0f;}
-        @Override float getMinV() {return 0.0f;}
-        @Override float getMaxV() {return 0.0f;}
+        @Override
+        public boolean isClosed() {
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return "Pixmap.EMPTY";
+        }
+
+        @Override
+        Texture getTexture() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        int getId() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        int getXOffset() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        int getYOffset() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        float getMinU() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        float getMaxU() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        float getMinV() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        float getMaxV() {
+            throw new UnsupportedOperationException();
+        }
     };
 
     /**
@@ -389,9 +434,7 @@ public abstract class Pixmap {
 
     /**
      * Gets the underlying {@link Texture} of this {@link Pixmap}.
-     * @return The underlying {@link Texture} of this {@link Pixmap} or {@code
-     * null} if this {@link Pixmap} is empty, i.e. it's total area is 0
-     * texels^2.
+     * @return The underlying {@link Texture} of this {@link Pixmap}.
      * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
      * {@link #isClosed()} returns {@code true}.
      */
