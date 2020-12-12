@@ -279,13 +279,42 @@ public abstract class Pixmap {
     public Pixmap subRegion(int fromX, int toX, int fromY, int toY) {
         this.ensureOpen();
 
+        if (fromX < 0) {
+            throw new IllegalArgumentException("Argument fromX can't be " +
+                    "negative.");
+        }//end if
+
+        if (toX > this.getWidth()) {
+            throw new IllegalArgumentException("Argument toX can't be " +
+                    "greater than the width of this Pixmap.");
+        }//end if
+
+        if (fromX > toX) {
+            throw new IllegalArgumentException("Argument fromX can't be " +
+                    "greater than argument toX.");
+        }//end for
+
+        if (fromY < 0) {
+            throw new IllegalArgumentException("Argument fromY can't be " +
+                    "negative.");
+        }//end if
+
+        if (toY > this.getHeight()) {
+            throw new IllegalArgumentException("Argument toY can't be " +
+                    "greater than the height of this Pixmap.");
+        }//end if
+
+        if (fromY > toY) {
+            throw new IllegalArgumentException("Arguments fromY can't be " +
+                    "greater than argument toY.");
+        }//end for
+
         if (0 == fromX && this.getWidth() == toX && 0 == fromY &&
                 this.getHeight() == toY) {
             return this;
         }//end if
 
-        return (toX - fromX != 0 && toY - fromY != 0) ? new Pxm(
-                this.getTexture(),
+        return (fromX != toX && fromY != toY) ? new Pxm(this.getTexture(),
                 this.getXOffset() + fromX,
                 this.getXOffset() + toX,
                 this.getYOffset() + fromY,
