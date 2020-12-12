@@ -43,7 +43,7 @@ public class Texture extends Pixmap implements AutoCloseable {
      * @param bufferedImage A {@link BufferedImage} that contains the data. The
      * origin must be at the top left texel with the y axis pointing downwards,
      * which is the default configuration of a {@link BufferedImage}.
-     * @return A {@link IntBinaryOperator} that returns the texel colors of the
+     * @return An {@link IntBinaryOperator} that returns the texel colors of the
      * given {@link BufferedImage} as {@code int}, per {@link Color#getRGB()}.
      * Its origin (0, 0) will be at the bottom left corner with the y axis
      * pointing upwards. The color of a texel at (i, j) in the {@link
@@ -94,12 +94,14 @@ public class Texture extends Pixmap implements AutoCloseable {
      * data, and stores it in the GPU memory.
      * @param width The width of this {@link Texture} in texels.
      * @param height The height of this {@link Texture} in texels.
-     * @param texels A {@link IntBinaryOperator} to retrieve the data of this
+     * @param texels An {@link IntBinaryOperator} to retrieve the data of this
      * {@link Texture} as returned by {@link Color#getRGB()}. Its first argument
      * is the row, while the second being its column number. Its origin (0, 0)
      * must be at the bottom left corner with the y axis pointing upwards.
      * @throws IllegalArgumentException If {@code width <= 0}.
      * @throws IllegalArgumentException If {@code height <= 0}.
+     * @throws ArithmeticException If {@code width * height * Integer.BYTES >
+     * Integer.MAX_VALUE}.
      */
     public Texture(final int width, final int height, IntBinaryOperator
             texels) {
@@ -115,8 +117,9 @@ public class Texture extends Pixmap implements AutoCloseable {
                     "positive.");
         }//end if
 
-        ByteBuffer buffer = MemoryUtil.memAlloc(width * height *
-                Integer.BYTES);
+        final int BUFFER_SIZE = Math.multiplyExact(Math.multiplyExact(width,
+                height), Integer.BYTES);
+        ByteBuffer buffer = MemoryUtil.memAlloc(BUFFER_SIZE);
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
                 final int TEXEL = texels.applyAsInt(i, j);
