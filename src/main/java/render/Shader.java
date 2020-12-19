@@ -104,7 +104,7 @@ public abstract sealed class Shader implements AutoCloseable {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.getId());
+        return Integer.hashCode(this.getId());
     }
 
     int getId() {
