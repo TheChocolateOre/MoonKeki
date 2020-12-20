@@ -18,7 +18,7 @@ import java.util.function.IntBinaryOperator;
 /**
  * A {@link Pixmap} implementation that wraps an OpenGL texture.
  */
-public class Texture extends Pixmap implements AutoCloseable {
+public final class Texture extends Pixmap implements AutoCloseable {
 
     /**
      * The id of this {@link Texture}, assigned by OpenGL.

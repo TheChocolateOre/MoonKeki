@@ -6,7 +6,6 @@ import org.lwjgl.opengl.GL20;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 
 public abstract sealed class Shader implements AutoCloseable {
 

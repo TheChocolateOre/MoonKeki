@@ -3,30 +3,45 @@ package render;
 import org.lwjgl.opengl.GL20;
 
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
-class ShaderProgram implements AutoCloseable {
+public final class ShaderProgram implements AutoCloseable {
 
     private final int ID;
     private boolean closed;
-    private boolean linked;
 
-    //The returned ShaderProgram is linked, the shaders are detached
-    static ShaderProgram of(Collection<? extends Shader> shaders) {
-        ShaderProgram program = new ShaderProgram(shaders).link();
-        shaders.forEach(program::detach);
-        return program;
+    public ShaderProgram(Shader.Vertex vertexShader, Shader.Fragment
+            fragmentShader) {
+        this(List.of(vertexShader, fragmentShader));
     }
 
-    //Creates a non-linked ShaderProgram
-    ShaderProgram() {
-        this(Collections.emptyList());
-    }
+    //Creates a linked ShaderProgram, the shaders are detached
+    public ShaderProgram(Collection<? extends Shader> shaders) {
+        if (shaders.size() < 2) {
+            throw new IllegalStateException("Argument Collection shaders " +
+                    "must have a size of at least 2.");
+        }//end if
 
-    //Creates a non-linked ShaderProgram, the shaders are attached
-    ShaderProgram(Collection<? extends Shader> shaders) {
+        boolean hasVertex = false;
+        boolean hasFragment = false;
+        for (Shader s : shaders) {
+            if (s instanceof Shader.Vertex) {
+                hasVertex = true;
+            } else if (s instanceof Shader.Fragment) {
+                hasFragment = true;
+            }//end if
+        }//end for
+
+        if (!(hasVertex & hasFragment)) {
+            throw new IllegalArgumentException("Argument Collection shaders " +
+                    "must contain at least 1 Shader.Vertex and 1 " +
+                    "Shader.Fragment Shader.");
+        }//end if
+
         this.ID = GL20.glCreateProgram();
         shaders.forEach(s -> GL20.glAttachShader(this.ID, s.getId()));
+        GL20.glLinkProgram(this.ID);
+        shaders.forEach(s -> GL20.glDetachShader(this.ID, s.getId()));
     }
 
     public boolean isClosed() {
@@ -68,23 +83,6 @@ class ShaderProgram implements AutoCloseable {
         return "Shader Program %d".formatted(this.getId());
     }
 
-    ShaderProgram attach(Shader shader) {
-        GL20.glAttachShader(this.getId(), shader.getId());
-        this.linked = false;
-        return this;
-    }
-
-    ShaderProgram detach(Shader shader) {
-        GL20.glDetachShader(this.getId(), shader.getId());
-        return this;
-    }
-
-    ShaderProgram link() {
-        GL20.glLinkProgram(this.getId());
-        this.linked = true;
-        return this;
-    }
-
     void use() {
         GL20.glUseProgram(this.getId());
     }
@@ -92,10 +90,6 @@ class ShaderProgram implements AutoCloseable {
     int getId() {
         this.ensureOpen();
         return this.ID;
-    }
-
-    boolean isLinked() {
-        return this.linked;
     }
 
     private void ensureOpen() throws IllegalStateException {
