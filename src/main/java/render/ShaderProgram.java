@@ -1,11 +1,9 @@
 package render;
 
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.system.MemoryUtil;
 
 import java.awt.geom.AffineTransform;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -58,15 +56,18 @@ public final class ShaderProgram implements AutoCloseable {
     }
 
     public void setUniformVariable(String name, boolean value) {
-        GL20.glUniform1i(this.getUniformLocation(name), value ? 1 : 0);
+        this.runOnThisProgram(() -> GL20.glUniform1i(this.getUniformLocation(
+                name), value ? 1 : 0));
     }
 
     public void setUniformVariable(String name, int value) {
-        GL20.glUniform1i(this.getUniformLocation(name), value);
+        this.runOnThisProgram(() -> GL20.glUniform1i(this.getUniformLocation(
+                name), value));
     }
 
     public void setUniformVariable(String name, float value) {
-        GL20.glUniform1f(this.getUniformLocation(name), value);
+        this.runOnThisProgram(() -> GL20.glUniform1f(this.getUniformLocation(
+                name), value));
     }
 
     public void setUniformArray(String name, boolean[] values) {
@@ -81,16 +82,8 @@ public final class ShaderProgram implements AutoCloseable {
                     "have a length of 0.");
         }//end if
 
-        final int UNIFORM_LOCATION = this.getUniformLocation(name);
-        final int BUFFER_SIZE = Math.multiplyExact(values.length,
-                Integer.BYTES);
-        IntBuffer buffer = MemoryUtil.memAllocInt(BUFFER_SIZE);
-        for (int v : values) {
-            buffer.put(v);
-        }//end for
-
-        GL20.glUniform1iv(UNIFORM_LOCATION, buffer);
-        MemoryUtil.memFree(buffer);
+        this.runOnThisProgram(() -> GL20.glUniform1iv(this.getUniformLocation(
+                name), values));
     }
 
     public void setUniformArray(String name, float[] values) {
@@ -99,15 +92,8 @@ public final class ShaderProgram implements AutoCloseable {
                     "have a length of 0.");
         }//end if
 
-        final int UNIFORM_LOCATION = this.getUniformLocation(name);
-        final int BUFFER_SIZE = Math.multiplyExact(values.length, Float.BYTES);
-        FloatBuffer buffer = MemoryUtil.memAllocFloat(BUFFER_SIZE);
-        for (float v : values) {
-            buffer.put(v);
-        }//end for
-
-        GL20.glUniform1fv(UNIFORM_LOCATION, buffer);
-        MemoryUtil.memFree(buffer);
+        this.runOnThisProgram(() -> GL20.glUniform1fv(this.getUniformLocation(
+                name), values));
     }
 
     public void setUniformMatrix(String name, AffineTransform value) {
@@ -124,7 +110,8 @@ public final class ShaderProgram implements AutoCloseable {
         data[7] = (float) matrix[5];
         data[8] = 1.0f;
 
-        GL20.glUniformMatrix3fv(UNIFORM_LOCATION, false, data);
+        this.runOnThisProgram(() -> GL20.glUniformMatrix3fv(UNIFORM_LOCATION,
+                false, data));
     }
 
     public boolean isClosed() {
@@ -188,8 +175,20 @@ public final class ShaderProgram implements AutoCloseable {
         }//end if
 
         final int LOCATION = GL20.glGetUniformLocation(this.getId(), name);
+        if (LOCATION == -1) {
+            throw new IllegalArgumentException("Argument name does not " +
+                    "correspond to a uniform variable in this ShaderProgram.");
+        }//end if
+
         this.uniformLocations.put(name, LOCATION);
         return LOCATION;
+    }
+
+    private void runOnThisProgram(Runnable action) {
+        final int PREV_PROGRAM = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+        this.use();
+        action.run();
+        GL20.glUseProgram(PREV_PROGRAM);
     }
 
     private void ensureOpen() throws IllegalStateException {
