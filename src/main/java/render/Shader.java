@@ -11,6 +11,21 @@ public abstract sealed class Shader implements AutoCloseable {
 
     public static final class Vertex extends Shader {
 
+        public static final Vertex DEFAULT = Vertex.ofSource(
+                """
+                #version 330 core
+
+                in vec2 position;
+                in vec2 v_texCoord;
+                out vec2 texCoord;
+
+                void main() {
+                    texCoord = v_texCoord;
+                    gl_Position = vec4(position, 0.0, 1.0);
+                }
+                """
+        );
+
         public static Vertex fromPath(String path) throws IOException {
             return Vertex.ofSource(Files.readString(Path.of(path)));
         }
@@ -32,6 +47,20 @@ public abstract sealed class Shader implements AutoCloseable {
     }//end inner class VertexShader
 
     public static final class Fragment extends Shader {
+
+        public static final Fragment DEFAULT = Fragment.ofSource(
+                """
+                #version 330 core
+
+                in vec2 texCoord;
+                out vec4 fragColor;
+                uniform sampler2D sampler;
+                
+                void main() {
+                    fragColor = texture(sampler, texCoord);
+                }
+                """
+        );
 
         public static Fragment fromPath(String path) throws IOException {
             return Fragment.ofSource(Files.readString(Path.of(path)));
