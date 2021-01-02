@@ -7,13 +7,19 @@ import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.util.stream.IntStream;
 
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL20.*;
+import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
+
 public final class ShaderProgram implements AutoCloseable {
 
+    private static final ShaderProgram DEFAULT = new ShaderProgram(
+            Shader.Vertex.DEFAULT, Shader.Fragment.DEFAULT);
     private static final int UNIFORM_CACHE_SIZE = 50;
     private final int ID;
-    private boolean closed;
-    private Map<String, Integer> uniformLocations = new LinkedHashMap<>(
+    private final Map<String, Integer> UNIFORM_LOCATIONS = new LinkedHashMap<>(
             UNIFORM_CACHE_SIZE, 0.75f, true);
+    private boolean closed;
 
     public ShaderProgram(Shader.Vertex vertexShader, Shader.Fragment
             fragmentShader) {
@@ -52,7 +58,15 @@ public final class ShaderProgram implements AutoCloseable {
         GL20.glLinkProgram(this.ID);
         shaders.forEach(s -> GL20.glDetachShader(this.ID, s.getId()));
 
-        //TODO Setup the attributes properly
+        final int POSITION = glGetAttribLocation(this.ID, "position");
+        glEnableVertexAttribArray(POSITION);
+        glVertexAttribPointer(POSITION, 2, GL_FLOAT, false,
+                4 * Float.BYTES, 0);
+
+        final int TEX_COORD = glGetAttribLocation(this.ID, "v_texCoord");
+        glEnableVertexAttribArray(TEX_COORD);
+        glVertexAttribPointer(TEX_COORD, 2, GL_FLOAT, false,
+                4 * Float.BYTES, 2 * Float.BYTES);
     }
 
     public void setUniformVariable(String name, boolean value) {
@@ -163,13 +177,13 @@ public final class ShaderProgram implements AutoCloseable {
     }
 
     private int getUniformLocation(String name) {
-        Integer location = this.uniformLocations.get(name);
+        Integer location = this.UNIFORM_LOCATIONS.get(name);
         if (location != null) {
             return location;
         }//end if
 
-        if (this.uniformLocations.size() == ShaderProgram.UNIFORM_CACHE_SIZE) {
-            Iterator<?> itr = this.uniformLocations.entrySet().iterator();
+        if (this.UNIFORM_LOCATIONS.size() == ShaderProgram.UNIFORM_CACHE_SIZE) {
+            Iterator<?> itr = this.UNIFORM_LOCATIONS.entrySet().iterator();
             itr.next();
             itr.remove();
         }//end if
@@ -180,7 +194,7 @@ public final class ShaderProgram implements AutoCloseable {
                     "correspond to a uniform variable in this ShaderProgram.");
         }//end if
 
-        this.uniformLocations.put(name, LOCATION);
+        this.UNIFORM_LOCATIONS.put(name, LOCATION);
         return LOCATION;
     }
 
