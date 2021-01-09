@@ -9,22 +9,65 @@ import java.nio.file.Path;
 
 public abstract sealed class Shader implements AutoCloseable {
 
-    public static final class Vertex extends Shader {
+    public static sealed class Vertex extends Shader {
 
-        public static final Vertex DEFAULT = Vertex.ofSource(
+        private static final class Unclosable extends Vertex {
+            private Vertex vertex;
+
+            public Unclosable(Vertex vertex) {
+                this.vertex = vertex;
+            }
+
+            @Override
+            public String toString() {
+                return vertex.toString();
+            }
+
+            @Override
+            public boolean isClosed() {
+                return vertex.isClosed();
+            }
+
+            @Override
+            public void close() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return vertex.equals(obj);
+            }
+
+            @Override
+            public int hashCode() {
+                return vertex.hashCode();
+            }
+
+            @Override
+            public int getId() {
+                return vertex.getId();
+            }
+        }//end inner class Unclosable
+
+        //Will be closed with Runtime.addShutdownHook()
+        private static final Vertex DEFAULT_CLOSABLE = Vertex.ofSource(
                 """
                 #version 330 core
 
                 in vec2 position;
                 in vec2 v_texCoord;
                 out vec2 texCoord;
+                uniform mat3 transformMatrix;
 
                 void main() {
                     texCoord = v_texCoord;
-                    gl_Position = vec4(position, 0.0, 1.0);
+                    gl_Position = vec4(transformMatrix * vec3(position, 1.0f), 
+                            1.0f);
                 }
                 """
         );
+        public static final Vertex DEFAULT = new Unclosable(
+                Vertex.DEFAULT_CLOSABLE);
 
         public static Vertex fromPath(String path) throws IOException {
             return Vertex.ofSource(Files.readString(Path.of(path)));
@@ -34,6 +77,9 @@ public abstract sealed class Shader implements AutoCloseable {
             return new Vertex(Shader.createShader(GL20.GL_VERTEX_SHADER,
                     source));
         }
+
+        //Only for wrapper ShaderProgram's'
+        private Vertex() {}
 
         private Vertex(int id) {
             super(id);
@@ -46,9 +92,48 @@ public abstract sealed class Shader implements AutoCloseable {
 
     }//end inner class VertexShader
 
-    public static final class Fragment extends Shader {
+    public static sealed class Fragment extends Shader {
 
-        public static final Fragment DEFAULT = Fragment.ofSource(
+        private static final class Unclosable extends Fragment {
+            private Fragment vertex;
+
+            public Unclosable(Fragment vertex) {
+                this.vertex = vertex;
+            }
+
+            @Override
+            public String toString() {
+                return vertex.toString();
+            }
+
+            @Override
+            public boolean isClosed() {
+                return vertex.isClosed();
+            }
+
+            @Override
+            public void close() {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return vertex.equals(obj);
+            }
+
+            @Override
+            public int hashCode() {
+                return vertex.hashCode();
+            }
+
+            @Override
+            public int getId() {
+                return vertex.getId();
+            }
+        }//end inner class Unclosable
+
+        //Will be closed with Runtime.addShutdownHook()
+        private static final Fragment DEFAULT_CLOSABLE = Fragment.ofSource(
                 """
                 #version 330 core
 
@@ -61,6 +146,8 @@ public abstract sealed class Shader implements AutoCloseable {
                 }
                 """
         );
+        public static final Fragment DEFAULT = new Unclosable(
+                Fragment.DEFAULT_CLOSABLE);
 
         public static Fragment fromPath(String path) throws IOException {
             return Fragment.ofSource(Files.readString(Path.of(path)));
@@ -70,6 +157,9 @@ public abstract sealed class Shader implements AutoCloseable {
             return new Fragment(Shader.createShader(GL20.GL_FRAGMENT_SHADER,
                     source));
         }
+
+        //Only for wrapper Shader's'
+        private Fragment() {}
 
         private Fragment(int id) {
             super(id);
@@ -96,6 +186,11 @@ public abstract sealed class Shader implements AutoCloseable {
 
     private final int ID;
     private boolean closed;
+
+    //Only for wrapper Shader's'
+    private Shader() {
+        this.ID = -1;
+    }
 
     Shader(int id) {
         this.ID = id;
