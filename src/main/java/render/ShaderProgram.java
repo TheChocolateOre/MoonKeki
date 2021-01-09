@@ -11,15 +11,101 @@ import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL20.*;
 import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
-public final class ShaderProgram implements AutoCloseable {
+public sealed class ShaderProgram implements AutoCloseable {
 
-    private static final ShaderProgram DEFAULT = new ShaderProgram(
+    private static final class Unclosable extends ShaderProgram {
+        private ShaderProgram program;
+
+        public Unclosable(ShaderProgram program) {
+            this.program = program;
+        }
+
+        @Override
+        public void setUniformVariable(String name, boolean value) {
+            program.setUniformVariable(name, value);
+        }
+
+        @Override
+        public void setUniformVariable(String name, int value) {
+            program.setUniformVariable(name, value);
+        }
+
+        @Override
+        public void setUniformVariable(String name, float value) {
+            program.setUniformVariable(name, value);
+        }
+
+        @Override
+        public void setUniformArray(String name, boolean[] values) {
+            program.setUniformArray(name, values);
+        }
+
+        @Override
+        public void setUniformArray(String name, int[] values) {
+            program.setUniformArray(name, values);
+        }
+
+        @Override
+        public void setUniformArray(String name, float[] values) {
+            program.setUniformArray(name, values);
+        }
+
+        @Override
+        public void setUniformMatrix(String name, AffineTransform value) {
+            program.setUniformMatrix(name, value);
+        }
+
+        @Override
+        public boolean isClosed() {
+            return program.isClosed();
+        }
+
+        @Override
+        public void close() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return program.equals(obj);
+        }
+
+        @Override
+        public int hashCode() {
+            return program.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return program.toString();
+        }
+
+        @Override
+        public void use() {
+            program.use();
+        }
+
+        @Override
+        public int getId() {
+            return program.getId();
+        }
+    }//end inner class Unclosable
+
+    //Will be closed with Runtime.addShutdownHook()
+    private static final ShaderProgram DEFAULT_CLOSABLE = new ShaderProgram(
             Shader.Vertex.DEFAULT, Shader.Fragment.DEFAULT);
+    public static final ShaderProgram DEFAULT = new Unclosable(
+            ShaderProgram.DEFAULT_CLOSABLE);
     private static final int UNIFORM_CACHE_SIZE = 50;
     private final int ID;
     private final Map<String, Integer> UNIFORM_LOCATIONS = new LinkedHashMap<>(
             UNIFORM_CACHE_SIZE, 0.75f, true);
     private boolean closed;
+
+    //Only for wrapper ShaderProgram's'
+    private ShaderProgram() {
+        this.ID = -1;
+    }
 
     public ShaderProgram(Shader.Vertex vertexShader, Shader.Fragment
             fragmentShader) {
