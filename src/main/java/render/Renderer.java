@@ -25,16 +25,17 @@ public class Renderer implements AutoCloseable {
     private boolean closed;
 
     public Renderer() {
-        //96kB
-        this(1000);
+        this(1000); //96kB
     }
 
     //Capacity is the maximum number of draw() calls before flush(). A draw()
-    //call has 24 vertices
+    //call has 24 floats
     public Renderer(int capacity) {
         this.vertices = MemoryUtil.memAllocFloat(Math.multiplyExact(
                 FLOATS_PER_QUAD, capacity));
     }
+
+    //TODO Clear screen/Pixmap mechanism?
 
     public void draw(Pixmap pixmap) {
         this.draw(pixmap, 0.0f, 0.0f);
@@ -47,7 +48,24 @@ public class Renderer implements AutoCloseable {
 
     public void draw(Pixmap pixmap, float x, float y, float width, float
             height) {
-        throw new UnsupportedOperationException();
+        if (this.isFull()) {
+            this.flush();
+        }//end if
+                     //First triangle
+        this.vertices.put(x).put(y + height)                      //top left
+                     .put(pixmap.getMinU()).put(pixmap.getMaxV()) //top left
+                     .put(x + width).put(y + height)              //top right
+                     .put(pixmap.getMaxU()).put(pixmap.getMaxV()) //top right
+                     .put(x).put(y)                               //bottom left
+                     .put(pixmap.getMinU()).put(pixmap.getMinV()) //bottom left
+                     //Second triangle
+                     .put(x + width).put(y + height)              //top right
+                     .put(pixmap.getMaxU()).put(pixmap.getMaxV()) //top right
+                     .put(x).put(y)                               //bottom left
+                     .put(pixmap.getMinU()).put(pixmap.getMinV()) //bottom left
+                     .put(x + width).put(y)                       //bottom right
+                     .put(pixmap.getMaxU()).put(pixmap.getMinV());//bottom right
+        ++this.size;
     }
 
     //null to render on screen
@@ -88,6 +106,7 @@ public class Renderer implements AutoCloseable {
         this.TRANSFORM.setTransform(transform);
     }
 
+    //Will not apply the post-processing shaders
     public void flush() {
         this.ensureOpen();
 
@@ -96,8 +115,13 @@ public class Renderer implements AutoCloseable {
         }//end if
 
         //Stuff..
+        //Don't forget to .flip() the buffer
 
         this.clear();
+        throw new UnsupportedOperationException();
+    }
+
+    public void applyPost() {
         throw new UnsupportedOperationException();
     }
 
@@ -117,6 +141,10 @@ public class Renderer implements AutoCloseable {
 
     public boolean isEmpty() {
         return this.size() == 0;
+    }
+
+    public boolean isFull() {
+        return this.space() == 0;
     }
 
     public void clear() {
