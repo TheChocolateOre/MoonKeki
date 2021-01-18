@@ -12,20 +12,20 @@ public abstract sealed class Shader implements AutoCloseable {
     public static sealed class Vertex extends Shader {
 
         private static final class Unclosable extends Vertex {
-            private Vertex vertex;
+            private final Vertex VERTEX;
 
             public Unclosable(Vertex vertex) {
-                this.vertex = vertex;
+                this.VERTEX = vertex;
             }
 
             @Override
             public String toString() {
-                return vertex.toString();
+                return VERTEX.toString();
             }
 
             @Override
             public boolean isClosed() {
-                return vertex.isClosed();
+                return VERTEX.isClosed();
             }
 
             @Override
@@ -35,19 +35,19 @@ public abstract sealed class Shader implements AutoCloseable {
 
             @Override
             public boolean equals(Object obj) {
-                return vertex.equals(obj);
+                return VERTEX.equals(obj);
             }
 
             @Override
             public int hashCode() {
-                return vertex.hashCode();
+                return VERTEX.hashCode();
             }
 
             @Override
             public int getId() {
-                return vertex.getId();
+                return VERTEX.getId();
             }
-        }//end inner class Unclosable
+        }//end static nested class Unclosable
 
         //Will be closed with Runtime.addShutdownHook()
         private static final Vertex DEFAULT_CLOSABLE = Vertex.ofSource(
@@ -90,25 +90,25 @@ public abstract sealed class Shader implements AutoCloseable {
             return "Vertex Shader %d".formatted(this.getId());
         }
 
-    }//end inner class VertexShader
+    }//end static nested class VertexShader
 
     public static sealed class Fragment extends Shader {
 
         private static final class Unclosable extends Fragment {
-            private Fragment vertex;
+            private final Fragment FRAGMENT;
 
             public Unclosable(Fragment vertex) {
-                this.vertex = vertex;
+                this.FRAGMENT = vertex;
             }
 
             @Override
             public String toString() {
-                return vertex.toString();
+                return FRAGMENT.toString();
             }
 
             @Override
             public boolean isClosed() {
-                return vertex.isClosed();
+                return FRAGMENT.isClosed();
             }
 
             @Override
@@ -118,19 +118,19 @@ public abstract sealed class Shader implements AutoCloseable {
 
             @Override
             public boolean equals(Object obj) {
-                return vertex.equals(obj);
+                return FRAGMENT.equals(obj);
             }
 
             @Override
             public int hashCode() {
-                return vertex.hashCode();
+                return FRAGMENT.hashCode();
             }
 
             @Override
             public int getId() {
-                return vertex.getId();
+                return FRAGMENT.getId();
             }
-        }//end inner class Unclosable
+        }//end static nested class Unclosable
 
         //Will be closed with Runtime.addShutdownHook()
         private static final Fragment DEFAULT_CLOSABLE = Fragment.ofSource(
@@ -170,7 +170,7 @@ public abstract sealed class Shader implements AutoCloseable {
             return "Fragment Shader %d".formatted(this.getId());
         }
 
-    }//end inner class FragmentShader
+    }//end static nested class FragmentShader
 
     private static int createShader(int type, String source) {
         final int ID = GL20.glCreateShader(type);
