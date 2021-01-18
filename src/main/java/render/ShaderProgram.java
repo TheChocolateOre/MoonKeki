@@ -7,57 +7,53 @@ import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.util.stream.IntStream;
 
-import static org.lwjgl.opengl.GL11.GL_FLOAT;
-import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
-
 public sealed class ShaderProgram implements AutoCloseable {
 
     private static final class Unclosable extends ShaderProgram {
-        private ShaderProgram program;
+        private final ShaderProgram PROGRAM;
 
         public Unclosable(ShaderProgram program) {
-            this.program = program;
+            this.PROGRAM = program;
         }
 
         @Override
         public void setUniformVariable(String name, boolean value) {
-            program.setUniformVariable(name, value);
+            PROGRAM.setUniformVariable(name, value);
         }
 
         @Override
         public void setUniformVariable(String name, int value) {
-            program.setUniformVariable(name, value);
+            PROGRAM.setUniformVariable(name, value);
         }
 
         @Override
         public void setUniformVariable(String name, float value) {
-            program.setUniformVariable(name, value);
+            PROGRAM.setUniformVariable(name, value);
         }
 
         @Override
         public void setUniformArray(String name, boolean[] values) {
-            program.setUniformArray(name, values);
+            PROGRAM.setUniformArray(name, values);
         }
 
         @Override
         public void setUniformArray(String name, int[] values) {
-            program.setUniformArray(name, values);
+            PROGRAM.setUniformArray(name, values);
         }
 
         @Override
         public void setUniformArray(String name, float[] values) {
-            program.setUniformArray(name, values);
+            PROGRAM.setUniformArray(name, values);
         }
 
         @Override
         public void setUniformMatrix(String name, AffineTransform value) {
-            program.setUniformMatrix(name, value);
+            PROGRAM.setUniformMatrix(name, value);
         }
 
         @Override
         public boolean isClosed() {
-            return program.isClosed();
+            return PROGRAM.isClosed();
         }
 
         @Override
@@ -67,29 +63,29 @@ public sealed class ShaderProgram implements AutoCloseable {
 
         @Override
         public boolean equals(Object obj) {
-            return program.equals(obj);
+            return PROGRAM.equals(obj);
         }
 
         @Override
         public int hashCode() {
-            return program.hashCode();
+            return PROGRAM.hashCode();
         }
 
         @Override
         public String toString() {
-            return program.toString();
+            return PROGRAM.toString();
         }
 
         @Override
         public void use() {
-            program.use();
+            PROGRAM.use();
         }
 
         @Override
         public int getId() {
-            return program.getId();
+            return PROGRAM.getId();
         }
-    }//end inner class Unclosable
+    }//end static nested class Unclosable
 
     //Will be closed with Runtime.addShutdownHook()
     private static final ShaderProgram DEFAULT_CLOSABLE = new ShaderProgram(
@@ -142,17 +138,10 @@ public sealed class ShaderProgram implements AutoCloseable {
         this.ID = GL20.glCreateProgram();
         shaders.forEach(s -> GL20.glAttachShader(this.ID, s.getId()));
         GL20.glLinkProgram(this.ID);
+        if (GL20.glGetProgrami(this.ID, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+            throw new RuntimeException(GL20.glGetProgramInfoLog(this.ID));
+        }//end if
         shaders.forEach(s -> GL20.glDetachShader(this.ID, s.getId()));
-
-        final int POSITION = glGetAttribLocation(this.ID, "position");
-        glEnableVertexAttribArray(POSITION);
-        glVertexAttribPointer(POSITION, 2, GL_FLOAT, false,
-                4 * Float.BYTES, 0);
-
-        final int TEX_COORD = glGetAttribLocation(this.ID, "v_texCoord");
-        glEnableVertexAttribArray(TEX_COORD);
-        glVertexAttribPointer(TEX_COORD, 2, GL_FLOAT, false,
-                4 * Float.BYTES, 2 * Float.BYTES);
     }
 
     public void setUniformVariable(String name, boolean value) {
@@ -255,6 +244,16 @@ public sealed class ShaderProgram implements AutoCloseable {
 
     void use() {
         GL20.glUseProgram(this.getId());
+
+        final int POSITION = GL20.glGetAttribLocation(this.ID, "position");
+        GL20.glEnableVertexAttribArray(POSITION);
+        GL20.glVertexAttribPointer(POSITION, 2, GL11.GL_FLOAT, false,
+                4 * Float.BYTES, 0);
+
+        final int TEX_COORD = GL20.glGetAttribLocation(this.ID, "v_texCoord");
+        GL20.glEnableVertexAttribArray(TEX_COORD);
+        GL20.glVertexAttribPointer(TEX_COORD, 2, GL11.GL_FLOAT, false,
+                4 * Float.BYTES, 2 * Float.BYTES);
     }
 
     int getId() {
