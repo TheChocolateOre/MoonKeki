@@ -1,6 +1,7 @@
 package render;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.util.Objects;
 
@@ -12,7 +13,7 @@ import java.util.Objects;
  * Pixmap#isClosed()} method returns {@code true}, will result in {@link
  * IllegalStateException}.
  */
-public abstract class Pixmap {
+public abstract class Pixmap extends Canvas {
 
     /**
      * A {@link Pixmap} implementation that wraps a {@link Texture}.
@@ -40,7 +41,7 @@ public abstract class Pixmap {
          * Constructs a {@link Pxm}, given its underlying {@link Texture} and
          * the region of that {@link Texture} it represents. Trying to construct
          * an empty region will result in {@link IllegalArgumentException}. Use
-         * {@link Pixmap#EMPTY} instead.
+         * {@link Pixmap#VOID} instead.
          * @param texture The underlying {@link Texture} of this {@link Pxm}.
          * Can't be null.
          * @param fromX The minimum texel column (included), in the x-axis of
@@ -134,13 +135,13 @@ public abstract class Pixmap {
             }//end if
         }
 
-    }//end inner class Pxm
+    }//end static nested class Pxm
 
     /**
      * Represents a {@link Pixmap}, that has a region area of 0 texels^2, i.e.
      * contains no colors.
      */
-    public static final Pixmap EMPTY = new Pixmap(0, 0) {
+    public static final Pixmap VOID = new Pixmap(0, 0) {
         @Override
         public boolean isClosed() {
             return false;
@@ -160,6 +161,9 @@ public abstract class Pixmap {
         Texture getTexture() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        void setup(int framebufferId) {}
 
         @Override
         int getId() {
@@ -254,7 +258,7 @@ public abstract class Pixmap {
     /**
      * Creates a {@link Pixmap} that represents a subregion of this {@link
      * Pixmap}. If {@code formX == toX || fromY == toY} then {@link
-     * Pixmap#EMPTY} will be returned.
+     * Pixmap#VOID} will be returned.
      * @param fromX The minimum texel column (included), in the x-axis of this
      * {@link Pixmap}, that the new {@link Pixmap} region will start form.
      * @param toX The maximum texel column (excluded), in the x-axis of this
@@ -318,7 +322,7 @@ public abstract class Pixmap {
                 this.getXOffset() + fromX,
                 this.getXOffset() + toX,
                 this.getYOffset() + fromY,
-                this.getYOffset() + toY) : Pixmap.EMPTY;
+                this.getYOffset() + toY) : Pixmap.VOID;
     }
 
     /**
@@ -441,6 +445,22 @@ public abstract class Pixmap {
                 this.getTexture().getHeight();
     }
 
+    @Override
+    void setup(final int framebufferId) {
+        super.setup(framebufferId);
+        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER,
+                                    GL30.GL_COLOR_ATTACHMENT0,
+                                    GL11.GL_TEXTURE_2D,
+                                    this.getId(),
+                                    0);
+    }
+
+    @Override
+    Canvas.Bounds getBounds() {
+        return new Canvas.Bounds(this.getXOffset(), this.getYOffset(),
+                this.getWidth(), this.getHeight());
+    }
+
     /**
      * Indicates if the area of region of this {@link Pixmap} is 0 texels^2,
      * i.e. contains no colors.
@@ -449,9 +469,10 @@ public abstract class Pixmap {
      * @throws IllegalStateException If this {@link Pixmap} is closed, i.e.
      * {@link #isClosed()} returns {@code true}.
      */
-    boolean isEmpty() {
+    @Override
+    boolean isVoid() {
         this.ensureOpen();
-        return this == Pixmap.EMPTY;
+        return this == Pixmap.VOID;
     }
 
     /**
