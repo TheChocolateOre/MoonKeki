@@ -66,6 +66,75 @@ public final class Texture extends Pixmap implements AutoCloseable {
         return (i, j) -> TEXELS[i * IMAGE.getWidth() + j];
     }
 
+    private static ByteBuffer toByteBuffer(final int width, final int height,
+            IntBinaryOperator texels) {
+        if (width <= 0) {
+            throw new IllegalArgumentException("Argument width must be " +
+                    "positive.");
+        }//end if
+
+        if (height <= 0) {
+            throw new IllegalArgumentException("Argument height must be " +
+                    "positive.");
+        }//end if
+
+        final int BUFFER_SIZE = Math.multiplyExact(Math.multiplyExact(width,
+                height), Integer.BYTES);
+        ByteBuffer data = MemoryUtil.memAlloc(BUFFER_SIZE);
+        for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; ++j) {
+                final int TEXEL = texels.applyAsInt(i, j);
+                data.put((byte) (TEXEL >> 16 & 0xFF))  //Red
+                    .put((byte) (TEXEL >> 8 & 0xFF))   //Green
+                    .put((byte) (TEXEL & 0xFF))        //Blue
+                    .put((byte) (TEXEL >> 24 & 0xFF)); //Alpha
+            }//end for
+        }//end for
+        data.flip();
+
+        return data;
+    }
+
+    private Texture(int width, int height, ByteBuffer data) {
+        super(width, height);
+
+        if (width == 0) {
+            throw new IllegalArgumentException("Argument width must be " +
+                    "positive.");
+        }//end if
+
+        if (height == 0) {
+            throw new IllegalArgumentException("Argument height must be " +
+                    "positive.");
+        }//end if
+
+        final int SIZE = Math.multiplyExact(Math.multiplyExact(width, height),
+                4);
+        if (data != null && SIZE != data.limit()) {
+            throw new IllegalArgumentException("The number of elements in " +
+                    "data must be equal to width * height.");
+        }//end if
+
+        final int TEXTURE_ID = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, TEXTURE_ID);
+
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S,
+                GL13C.GL_CLAMP_TO_BORDER);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T,
+                GL13C.GL_CLAMP_TO_BORDER);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
+                GL13C.GL_NEAREST);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER,
+                GL13C.GL_NEAREST);
+
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width,
+                height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, data);
+        MemoryUtil.memFree(data);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
+        this.ID = TEXTURE_ID;
+    }
+
     /**
      * Creates a {@link Texture} from an image file and stores it in the GPU
      * memory.
@@ -89,6 +158,10 @@ public final class Texture extends Pixmap implements AutoCloseable {
                 image));
     }
 
+    public Texture(final int width, final int height) {
+        this(width, height, (ByteBuffer) null);
+    }
+
     /**
      * Creates a {@link Texture} from a {@link BiFunction} that contains the
      * data, and stores it in the GPU memory.
@@ -105,50 +178,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
      */
     public Texture(final int width, final int height, IntBinaryOperator
             texels) {
-        super(width, height);
-
-        if (width == 0) {
-            throw new IllegalArgumentException("Argument width must be " +
-                    "positive.");
-        }//end if
-
-        if (height == 0) {
-            throw new IllegalArgumentException("Argument height must be " +
-                    "positive.");
-        }//end if
-
-        final int BUFFER_SIZE = Math.multiplyExact(Math.multiplyExact(width,
-                height), Integer.BYTES);
-        ByteBuffer buffer = MemoryUtil.memAlloc(BUFFER_SIZE);
-        for (int i = 0; i < height; ++i) {
-            for (int j = 0; j < width; ++j) {
-                final int TEXEL = texels.applyAsInt(i, j);
-                buffer.put((byte) (TEXEL >> 16 & 0xFF))  //Red
-                      .put((byte) (TEXEL >> 8 & 0xFF))   //Green
-                      .put((byte) (TEXEL & 0xFF))        //Blue
-                      .put((byte) (TEXEL >> 24 & 0xFF)); //Alpha
-            }//end for
-        }//end for
-        buffer.flip();
-
-        final int TEXTURE_ID = GL11.glGenTextures();
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, TEXTURE_ID);
-
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S,
-                GL13C.GL_CLAMP_TO_BORDER);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T,
-                GL13C.GL_CLAMP_TO_BORDER);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
-                GL13C.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER,
-                GL13C.GL_NEAREST);
-
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width,
-                height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
-        MemoryUtil.memFree(buffer);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-
-        this.ID = TEXTURE_ID;
+        this(width, height, Texture.toByteBuffer(width, height, texels));
     }
 
     /**
