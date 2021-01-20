@@ -78,7 +78,7 @@ public class Renderer implements AutoCloseable {
             new LinkedHashMap<>(Renderer.POST_TEXTURE_CACHE_SIZE, 0.75f, true);
     private Canvas canvas = Renderer.SCREEN;
     private final AffineTransform TRANSFORM = new AffineTransform();
-    private Integer postFramebufferID;
+    private Integer postFramebufferID; //Can be null
     private final int CANVAS_FRAMEBUFFER_ID = GL30.glGenFramebuffers();
     private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
     private Pixmap currentPixmap; //Can be null
@@ -329,6 +329,10 @@ public class Renderer implements AutoCloseable {
         if (this.postFramebufferID != null) {
             GL30.glDeleteFramebuffers(this.postFramebufferID);
         }//end if
+        this.POST_TEXTURES.values()
+                          .stream()
+                          .flatMap(Collection::stream)
+                          .forEach(Texture::close);
         GL30.glDeleteFramebuffers(this.CANVAS_FRAMEBUFFER_ID);
         GL20.glDeleteBuffers(this.BUFFER_OBJECT_ID);
 
