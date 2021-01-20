@@ -10,15 +10,15 @@ import org.lwjgl.system.MemoryUtil;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
 
 import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
 
 public class Renderer implements AutoCloseable {
+
+    private static record TextureSize(int width, int height) {}
 
     public static final Canvas SCREEN = new Canvas() {
         private final int[] WIDTH_BUFFER = new int[1];
@@ -27,6 +27,25 @@ public class Renderer implements AutoCloseable {
         @Override
         void setup(int framebufferId) {
             super.setup(0);
+        }
+
+        @Override
+        void copyTo(Pixmap destination, int sourceFramebufferId, int
+                destFramebufferId) {
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
+            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destFramebufferId);
+            GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER,
+                                        GL30.GL_COLOR_ATTACHMENT0,
+                                        GL11.GL_TEXTURE_2D,
+                                        destination.getId(),
+                                        0);
+
+            Canvas.Bounds bounds = this.getBounds();
+            GL30.glBlitFramebuffer(0, 0, bounds.width(), bounds.height(),
+                    destination.getXOffset(), destination.getYOffset(),
+                    destination.getXOffset() + destination.getWidth(),
+                    destination.getYOffset() + destination.getHeight(),
+                    GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
         }
 
         @Override
@@ -49,16 +68,19 @@ public class Renderer implements AutoCloseable {
     };
     private static final int VERTICES_PER_QUAD = 6;
     private static final int FLOATS_PER_QUAD = 4 * Renderer.VERTICES_PER_QUAD;
+    private static final int POST_TEXTURE_CACHE_SIZE = 5;
     //contains texture coordinates too
     public FloatBuffer vertices;
     private int size;
     private ShaderProgram baseProgram = ShaderProgram.DEFAULT;
     private final List<ShaderProgram> POST_PROGRAMS = new ArrayList<>();
+    private final Map<Renderer.TextureSize, List<Texture>> POST_TEXTURES =
+            new LinkedHashMap<>(Renderer.POST_TEXTURE_CACHE_SIZE, 0.75f, true);
     private Canvas canvas = Renderer.SCREEN;
     private final AffineTransform TRANSFORM = new AffineTransform();
-    //The value at index 0 is never null, while at 1 may or may not be
-    private final Integer[] FRAMEBUFFER_IDS = {GL30.glGenFramebuffers(), null};
-    public final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
+    private Integer postFramebufferID;
+    private final int CANVAS_FRAMEBUFFER_ID = GL30.glGenFramebuffers();
+    private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
     private Pixmap currentPixmap; //Can be null
     private boolean closed;
 
@@ -80,7 +102,7 @@ public class Renderer implements AutoCloseable {
 
     public void clearCanvas(Color color) {
         this.ensureOpen();
-        this.canvas.setup(this.getFramebufferId(0));
+        this.canvas.setup(this.CANVAS_FRAMEBUFFER_ID);
         GL11.glClearColor(color.getRed(), color.getGreen(), color.getBlue(),
                 color.getAlpha());
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
@@ -97,14 +119,6 @@ public class Renderer implements AutoCloseable {
     public void draw(Pixmap pixmap, float x, float y, float width, float
             height) {
         this.ensureOpen();
-        if (pixmap.isVoid()) {
-            return;
-        }//end if
-
-        if (this.canvas.getId() == pixmap.getId()) {
-            throw new IllegalArgumentException("Argument pixmap is the " +
-                    "canvas of this Renderer.");
-        }//end if
 
         if (width < 0.0f) {
             throw new IllegalArgumentException("Argument width can't be " +
@@ -118,6 +132,11 @@ public class Renderer implements AutoCloseable {
 
         if (pixmap.isVoid() || 0.0f == width || 0.0 == height) {
             return;
+        }//end if
+
+        if (this.canvas.getId() == pixmap.getId()) {
+            throw new IllegalArgumentException("Argument pixmap is the " +
+                    "canvas of this Renderer.");
         }//end if
 
         if (this.isFull() || (this.currentPixmap != null &&
@@ -203,7 +222,7 @@ public class Renderer implements AutoCloseable {
             return;
         }//end if
 
-        this.canvas.setup(this.getFramebufferId(0));
+        this.canvas.setup(this.CANVAS_FRAMEBUFFER_ID);
         this.currentPixmap.bind();
 
         this.vertices.flip();
@@ -221,7 +240,50 @@ public class Renderer implements AutoCloseable {
     }
 
     public void applyPost() {
-        throw new UnsupportedOperationException();
+        this.ensureOpen();
+
+        if (!this.isEmpty()) {
+            throw new IllegalStateException("This Renderer must be empty, " +
+                    "before applying post processing effects.");
+        }//end if
+
+        if (this.POST_PROGRAMS.isEmpty()) {
+            return;
+        }//end if
+
+        final Canvas PREV_CANVAS = this.canvas;
+        final ShaderProgram PREV_BASE_PROGRAM = this.baseProgram;
+        final AffineTransform PREV_TRANSFORM = new AffineTransform(
+                this.TRANSFORM);
+        this.setTransform(new AffineTransform());
+
+        Canvas.Bounds canvasBounds = this.canvas.getBounds();
+        List<Texture> postTextures = this.getPostTextures(canvasBounds.width(),
+                canvasBounds.height());
+
+        this.canvas.copyTo(postTextures.get(0), this.CANVAS_FRAMEBUFFER_ID,
+                this.getPostFramebufferId());
+
+        int sourceIndex = 0;
+        int destIndex = 1;
+        for (ShaderProgram p : this.POST_PROGRAMS.subList(0,
+                this.POST_PROGRAMS.size() - 1)) {
+            this.setCanvas(postTextures.get(destIndex++));
+            this.setBaseProgram(p);
+            this.draw(postTextures.get(sourceIndex++));
+            this.flush();
+            sourceIndex %= 2;
+            destIndex %= 2;
+        }//end for
+
+        this.setCanvas(PREV_CANVAS);
+        this.setBaseProgram(this.POST_PROGRAMS.get(this.POST_PROGRAMS.size() -
+                1));
+        this.draw(postTextures.get(sourceIndex));
+        this.flush();
+
+        this.setBaseProgram(PREV_BASE_PROGRAM);
+        this.setTransform(PREV_TRANSFORM);
     }
 
     public int size() {
@@ -264,24 +326,43 @@ public class Renderer implements AutoCloseable {
         }//end if
 
         MemoryUtil.memFree(this.vertices);
-        GL30.glDeleteFramebuffers(this.FRAMEBUFFER_IDS[0]);
-        if (this.FRAMEBUFFER_IDS[1] != null) {
-            GL30.glDeleteFramebuffers(this.FRAMEBUFFER_IDS[1]);
+        if (this.postFramebufferID != null) {
+            GL30.glDeleteFramebuffers(this.postFramebufferID);
         }//end if
+        GL30.glDeleteFramebuffers(this.CANVAS_FRAMEBUFFER_ID);
         GL20.glDeleteBuffers(this.BUFFER_OBJECT_ID);
 
         this.closed = true;
     }
 
-    private int getFramebufferId(final int index) {
+    private int getPostFramebufferId() {
         this.ensureOpen();
-        Objects.checkIndex(index, this.FRAMEBUFFER_IDS.length);
 
-        if (index != 0 && null == this.FRAMEBUFFER_IDS[index]) {
-            this.FRAMEBUFFER_IDS[index] = GL30.glGenFramebuffers();
+        if (null == this.postFramebufferID) {
+            this.postFramebufferID = GL30.glGenFramebuffers();
         }//end if
 
-        return this.FRAMEBUFFER_IDS[index];
+        return this.postFramebufferID;
+    }
+
+    private List<Texture> getPostTextures(int width, int height) {
+        Renderer.TextureSize key = new Renderer.TextureSize(width, height);
+        List<Texture> textures = this.POST_TEXTURES.get(key);
+        if (textures != null) {
+            return textures;
+        }//end if
+
+        if (this.POST_TEXTURES.size() == Renderer.POST_TEXTURE_CACHE_SIZE) {
+            var itr = this.POST_TEXTURES.entrySet().iterator();
+            itr.next().getValue().forEach(Texture::close);
+            itr.remove();
+        }//end if
+
+        textures = List.of(new Texture(width, height), new Texture(width,
+                height));
+        this.POST_TEXTURES.put(key, textures);
+
+        return textures;
     }
 
     private AffineTransform getCombined() {

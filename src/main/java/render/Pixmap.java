@@ -456,6 +456,35 @@ public abstract class Pixmap extends Canvas {
     }
 
     @Override
+    void copyTo(Pixmap destination, int sourceFramebufferId, int
+            destFramebufferId) {
+        this.ensureOpen();
+        if (this == destination) {
+            return;
+        }//end if
+
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, sourceFramebufferId);
+        GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER,
+                                    GL30.GL_COLOR_ATTACHMENT0,
+                                    GL11.GL_TEXTURE_2D,
+                                    this.getId(),
+                                    0);
+        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destFramebufferId);
+        GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER,
+                                    GL30.GL_COLOR_ATTACHMENT0,
+                                    GL11.GL_TEXTURE_2D,
+                                    destination.getId(),
+                                    0);
+        GL30.glBlitFramebuffer(this.getXOffset(), this.getYOffset(),
+                this.getXOffset() + this.getWidth(), this.getYOffset() +
+                this.getHeight(), destination.getXOffset(),
+                destination.getYOffset(), destination.getXOffset() +
+                destination.getWidth(), destination.getYOffset() +
+                destination.getHeight(), GL11.GL_COLOR_BUFFER_BIT,
+                GL11.GL_NEAREST);
+    }
+
+    @Override
     Canvas.Bounds getBounds() {
         return new Canvas.Bounds(this.getXOffset(), this.getYOffset(),
                 this.getWidth(), this.getHeight());
@@ -470,7 +499,7 @@ public abstract class Pixmap extends Canvas {
      * {@link #isClosed()} returns {@code true}.
      */
     @Override
-    boolean isVoid() {
+    public boolean isVoid() {
         this.ensureOpen();
         return this == Pixmap.VOID;
     }
