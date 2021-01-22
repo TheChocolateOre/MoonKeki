@@ -1,6 +1,7 @@
 package render;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.util.Objects;
@@ -456,8 +457,7 @@ public abstract class Pixmap extends Canvas {
     }
 
     @Override
-    void copyTo(Pixmap destination, int sourceFramebufferId, int
-            destFramebufferId) {
+    void copyTo(Pixmap destination, int sourceFramebufferId) {
         this.ensureOpen();
         if (this == destination) {
             return;
@@ -469,19 +469,12 @@ public abstract class Pixmap extends Canvas {
                                     GL11.GL_TEXTURE_2D,
                                     this.getId(),
                                     0);
-        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destFramebufferId);
-        GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER,
-                                    GL30.GL_COLOR_ATTACHMENT0,
-                                    GL11.GL_TEXTURE_2D,
-                                    destination.getId(),
-                                    0);
-        GL30.glBlitFramebuffer(this.getXOffset(), this.getYOffset(),
-                this.getXOffset() + this.getWidth(), this.getYOffset() +
-                this.getHeight(), destination.getXOffset(),
-                destination.getYOffset(), destination.getXOffset() +
-                destination.getWidth(), destination.getYOffset() +
-                destination.getHeight(), GL11.GL_COLOR_BUFFER_BIT,
-                GL11.GL_NEAREST);
+
+        destination.bind();
+        GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0,
+                destination.getXOffset(), destination.getYOffset(),
+                this.getXOffset(), this.getYOffset(), this.getWidth(),
+                this.getHeight());
     }
 
     @Override

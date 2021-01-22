@@ -30,22 +30,13 @@ public class Renderer implements AutoCloseable {
         }
 
         @Override
-        void copyTo(Pixmap destination, int sourceFramebufferId, int
-                destFramebufferId) {
+        void copyTo(Pixmap destination, int sourceFramebufferId) {
             GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
-            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destFramebufferId);
-            GL30.glFramebufferTexture2D(GL30.GL_DRAW_FRAMEBUFFER,
-                                        GL30.GL_COLOR_ATTACHMENT0,
-                                        GL11.GL_TEXTURE_2D,
-                                        destination.getId(),
-                                        0);
-
             Canvas.Bounds bounds = this.getBounds();
-            GL30.glBlitFramebuffer(0, 0, bounds.width(), bounds.height(),
+            destination.bind();
+            GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0,
                     destination.getXOffset(), destination.getYOffset(),
-                    destination.getXOffset() + destination.getWidth(),
-                    destination.getYOffset() + destination.getHeight(),
-                    GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+                    0, 0, bounds.width(), bounds.height());
         }
 
         @Override
@@ -78,7 +69,6 @@ public class Renderer implements AutoCloseable {
             new LinkedHashMap<>(Renderer.POST_TEXTURE_CACHE_SIZE, 0.75f, true);
     private Canvas canvas = Renderer.SCREEN;
     private final AffineTransform TRANSFORM = new AffineTransform();
-    private Integer postFramebufferID; //Can be null
     private final int CANVAS_FRAMEBUFFER_ID = GL30.glGenFramebuffers();
     private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
     private Pixmap currentPixmap; //Can be null
@@ -240,8 +230,6 @@ public class Renderer implements AutoCloseable {
     }
 
     public void applyPost() {
-        this.ensureOpen();
-
         if (!this.isEmpty()) {
             throw new IllegalStateException("This Renderer must be empty, " +
                     "before applying post processing effects.");
@@ -261,8 +249,7 @@ public class Renderer implements AutoCloseable {
         List<Texture> postTextures = this.getPostTextures(canvasBounds.width(),
                 canvasBounds.height());
 
-        this.canvas.copyTo(postTextures.get(0), this.CANVAS_FRAMEBUFFER_ID,
-                this.getPostFramebufferId());
+        this.canvas.copyTo(postTextures.get(0), this.CANVAS_FRAMEBUFFER_ID);
 
         int sourceIndex = 0;
         int destIndex = 1;
@@ -279,7 +266,8 @@ public class Renderer implements AutoCloseable {
         this.setCanvas(PREV_CANVAS);
         this.setBaseProgram(this.POST_PROGRAMS.get(this.POST_PROGRAMS.size() -
                 1));
-        this.draw(postTextures.get(sourceIndex));
+        this.draw(postTextures.get(sourceIndex), canvasBounds.x(),
+                canvasBounds.y());
         this.flush();
 
         this.setBaseProgram(PREV_BASE_PROGRAM);
@@ -337,16 +325,6 @@ public class Renderer implements AutoCloseable {
         GL20.glDeleteBuffers(this.BUFFER_OBJECT_ID);
 
         this.closed = true;
-    }
-
-    private int getPostFramebufferId() {
-        this.ensureOpen();
-
-        if (null == this.postFramebufferID) {
-            this.postFramebufferID = GL30.glGenFramebuffers();
-        }//end if
-
-        return this.postFramebufferID;
     }
 
     private List<Texture> getPostTextures(int width, int height) {

@@ -27,8 +27,7 @@ abstract class Canvas {
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebufferId);
     }
 
-    abstract void copyTo(Pixmap destination, int sourceFramebufferId, int
-            destFramebufferId);
+    abstract void copyTo(Pixmap destination, int sourceFramebufferId);
     abstract Canvas.Bounds getBounds();
     abstract boolean isVoid();
     abstract int getId();
