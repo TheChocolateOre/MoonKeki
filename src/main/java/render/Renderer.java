@@ -314,9 +314,6 @@ public class Renderer implements AutoCloseable {
         }//end if
 
         MemoryUtil.memFree(this.vertices);
-        if (this.postFramebufferID != null) {
-            GL30.glDeleteFramebuffers(this.postFramebufferID);
-        }//end if
         this.POST_TEXTURES.values()
                           .stream()
                           .flatMap(Collection::stream)
