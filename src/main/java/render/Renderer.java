@@ -36,7 +36,7 @@ public class Renderer implements AutoCloseable {
             destination.bind();
             GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0,
                     destination.getXOffset(), destination.getYOffset(),
-                    0, 0, bounds.width(), bounds.height());
+                    bounds.x(), bounds.y(), bounds.width(), bounds.height());
         }
 
         @Override
@@ -93,8 +93,8 @@ public class Renderer implements AutoCloseable {
     public void clearCanvas(Color color) {
         this.ensureOpen();
         this.canvas.setup(this.CANVAS_FRAMEBUFFER_ID);
-        GL11.glClearColor(color.getRed(), color.getGreen(), color.getBlue(),
-                color.getAlpha());
+        GL11.glClearColor(color.getRed() / 255.0f, color.getGreen() / 255.0f,
+                color.getBlue() / 255.0f, color.getAlpha() / 255.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
     }
 
