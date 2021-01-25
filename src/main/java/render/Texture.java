@@ -127,7 +127,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER,
                 GL13C.GL_NEAREST);
 
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width,
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width,
                 height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, data);
         MemoryUtil.memFree(data);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -160,6 +160,18 @@ public final class Texture extends Pixmap implements AutoCloseable {
 
     public Texture(final int width, final int height) {
         this(width, height, (ByteBuffer) null);
+    }
+
+    public Texture(final int width, final int height, Color color) {
+        super(width, height);
+
+        Texture texture = new Texture(width, height);
+        try (Renderer renderer = new Renderer(1)) {
+            renderer.setCanvas(texture);
+            renderer.clearCanvas(color);
+        }//end try
+
+        this.ID = texture.ID;
     }
 
     /**
