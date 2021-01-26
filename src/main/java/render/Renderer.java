@@ -5,6 +5,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 import java.awt.*;
@@ -12,6 +13,7 @@ import java.awt.geom.AffineTransform;
 import java.nio.FloatBuffer;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
@@ -20,48 +22,24 @@ public class Renderer implements AutoCloseable {
 
     private static record TextureSize(int width, int height) {}
 
-    public static final Canvas SCREEN = new Canvas() {
+    public static final Canvas SCREEN = new Canvas.ScreenRegion() {
         private final int[] WIDTH_BUFFER = new int[1];
         private final int[] HEIGHT_BUFFER = new int[1];
 
         @Override
-        void setup(int framebufferId) {
-            super.setup(0);
-        }
-
-        @Override
-        void copyTo(Pixmap destination, int sourceFramebufferId) {
-            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
-            Canvas.Bounds bounds = this.getBounds();
-            destination.bind();
-            GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0,
-                    destination.getXOffset(), destination.getYOffset(),
-                    bounds.x(), bounds.y(), bounds.width(), bounds.height());
-        }
-
-        @Override
-        Canvas.Bounds getBounds() {
+        protected Canvas.Bounds getBounds() {
             GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(),
                     this.WIDTH_BUFFER, this.HEIGHT_BUFFER);
             return new Canvas.Bounds(0, 0, this.WIDTH_BUFFER[0],
                     this.HEIGHT_BUFFER[0]);
-        }
-
-        @Override
-        boolean isVoid() {
-            return false;
-        }
-
-        @Override
-        int getId() {
-            return -1;
         }
     };
     private static final int VERTICES_PER_QUAD = 6;
     private static final int FLOATS_PER_QUAD = 4 * Renderer.VERTICES_PER_QUAD;
     private static final int POST_TEXTURE_CACHE_SIZE = 5;
     //contains texture coordinates too
-    public FloatBuffer vertices;
+    private FloatBuffer vertices;
+    private Consumer<FloatBuffer> dispenser;
     private int size;
     private ShaderProgram baseProgram = ShaderProgram.DEFAULT;
     private final List<ShaderProgram> POST_PROGRAMS = new ArrayList<>();
@@ -73,6 +51,22 @@ public class Renderer implements AutoCloseable {
     private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
     private Pixmap currentPixmap; //Can be null
     private boolean closed;
+
+    public static Renderer temporary(int capacity) {
+        if (capacity <= 0) {
+            throw new IllegalArgumentException("Argument capacity must be " +
+                    "positive.");
+        }//end if
+
+        FloatBuffer vertices = MemoryStack.stackPush().mallocFloat(
+                Math.multiplyExact(Renderer.FLOATS_PER_QUAD, capacity));
+        return new Renderer(vertices, b -> MemoryStack.stackPop());
+    }
+    
+    private Renderer(FloatBuffer vertices, Consumer<FloatBuffer> dispenser) {
+        this.vertices = vertices;
+        this.dispenser = dispenser;
+    }
 
     public Renderer() {
         this(1000); //96kB
@@ -88,6 +82,7 @@ public class Renderer implements AutoCloseable {
 
         this.vertices = MemoryUtil.memAllocFloat(Math.multiplyExact(
                 Renderer.FLOATS_PER_QUAD, capacity));
+        this.dispenser = MemoryUtil::memFree;
     }
 
     public void clearCanvas(Color color) {
@@ -124,7 +119,7 @@ public class Renderer implements AutoCloseable {
             return;
         }//end if
 
-        if (this.canvas.getId() == pixmap.getId()) {
+        if (this.canvas instanceof Pixmap p && p.getId() == pixmap.getId()) {
             throw new IllegalArgumentException("Argument pixmap is the " +
                     "canvas of this Renderer.");
         }//end if
@@ -160,8 +155,8 @@ public class Renderer implements AutoCloseable {
                     "void.");
         }//end if
 
-        if (this.currentPixmap != null && canvas.getId() ==
-                this.currentPixmap.getId()) {
+        if (this.currentPixmap != null && canvas instanceof Pixmap p &&
+                p.getId() == this.currentPixmap.getId()) {
             throw new IllegalArgumentException("Argument canvas is the " +
                     "currently bound draw Pixmap of this Renderer.");
         }//end if
@@ -239,39 +234,34 @@ public class Renderer implements AutoCloseable {
             return;
         }//end if
 
-        final Canvas PREV_CANVAS = this.canvas;
-        final ShaderProgram PREV_BASE_PROGRAM = this.baseProgram;
-        final AffineTransform PREV_TRANSFORM = new AffineTransform(
-                this.TRANSFORM);
-        this.setTransform(new AffineTransform());
+        final Canvas.Bounds CANVAS_BOUNDS = this.canvas.getBounds();
+        final List<Texture> POST_TEXTURES = this.getPostTextures(
+                CANVAS_BOUNDS.width(), CANVAS_BOUNDS.height());
+        final Color CLEAR_COLOR = new Color(0, 0, 0, 0);
+        this.canvas.copyTo(POST_TEXTURES.get(0), this.CANVAS_FRAMEBUFFER_ID);
 
-        Canvas.Bounds canvasBounds = this.canvas.getBounds();
-        List<Texture> postTextures = this.getPostTextures(canvasBounds.width(),
-                canvasBounds.height());
+        try (Renderer temp = Renderer.temporary(1)) {
+            int sourceIndex = 0;
+            int destIndex = 1;
+            for (ShaderProgram p : this.POST_PROGRAMS.subList(0,
+                    this.POST_PROGRAMS.size() - 1)) {
+                temp.setCanvas(POST_TEXTURES.get(destIndex++));
+                temp.clearCanvas(CLEAR_COLOR);
+                temp.setBaseProgram(p);
+                temp.draw(POST_TEXTURES.get(sourceIndex++));
+                temp.flush();
+                sourceIndex %= 2;
+                destIndex %= 2;
+            }//end for
 
-        this.canvas.copyTo(postTextures.get(0), this.CANVAS_FRAMEBUFFER_ID);
-
-        int sourceIndex = 0;
-        int destIndex = 1;
-        for (ShaderProgram p : this.POST_PROGRAMS.subList(0,
-                this.POST_PROGRAMS.size() - 1)) {
-            this.setCanvas(postTextures.get(destIndex++));
-            this.setBaseProgram(p);
-            this.draw(postTextures.get(sourceIndex++));
-            this.flush();
-            sourceIndex %= 2;
-            destIndex %= 2;
-        }//end for
-
-        this.setCanvas(PREV_CANVAS);
-        this.setBaseProgram(this.POST_PROGRAMS.get(this.POST_PROGRAMS.size() -
-                1));
-        this.draw(postTextures.get(sourceIndex), canvasBounds.x(),
-                canvasBounds.y());
-        this.flush();
-
-        this.setBaseProgram(PREV_BASE_PROGRAM);
-        this.setTransform(PREV_TRANSFORM);
+            temp.setCanvas(this.canvas);
+            temp.clearCanvas(CLEAR_COLOR);
+            temp.setBaseProgram(this.POST_PROGRAMS.get(this.POST_PROGRAMS.size()
+                    - 1));
+            temp.draw(POST_TEXTURES.get(sourceIndex), CANVAS_BOUNDS.x(),
+                    CANVAS_BOUNDS.y());
+            temp.flush();
+        }//end try-with-resources
     }
 
     public int size() {
@@ -313,7 +303,7 @@ public class Renderer implements AutoCloseable {
             return;
         }//end if
 
-        MemoryUtil.memFree(this.vertices);
+        this.dispenser.accept(this.vertices);
         this.POST_TEXTURES.values()
                           .stream()
                           .flatMap(Collection::stream)
