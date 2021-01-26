@@ -14,7 +14,7 @@ import java.util.Objects;
  * Pixmap#isClosed()} method returns {@code true}, will result in {@link
  * IllegalStateException}.
  */
-public abstract class Pixmap extends Canvas {
+public abstract non-sealed class Pixmap extends Canvas {
 
     /**
      * A {@link Pixmap} implementation that wraps a {@link Texture}.
@@ -478,7 +478,7 @@ public abstract class Pixmap extends Canvas {
     }
 
     @Override
-    Canvas.Bounds getBounds() {
+    public Canvas.Bounds getBounds() {
         return new Canvas.Bounds(this.getXOffset(), this.getYOffset(),
                 this.getWidth(), this.getHeight());
     }
