@@ -164,7 +164,9 @@ public abstract non-sealed class Pixmap extends Canvas {
         }
 
         @Override
-        void setup(int framebufferId) {}
+        void setup(int framebufferId) {
+            throw new UnsupportedOperationException();
+        }
 
         @Override
         int getId() {
@@ -477,12 +479,6 @@ public abstract non-sealed class Pixmap extends Canvas {
                 this.getHeight());
     }
 
-    @Override
-    public Canvas.Bounds getBounds() {
-        return new Canvas.Bounds(this.getXOffset(), this.getYOffset(),
-                this.getWidth(), this.getHeight());
-    }
-
     /**
      * Indicates if the area of region of this {@link Pixmap} is 0 texels^2,
      * i.e. contains no colors.
@@ -518,7 +514,7 @@ public abstract non-sealed class Pixmap extends Canvas {
      * @return The minimum texel column (included), in the x-axis of the {@link
      * Texture} this {@link Pixmap} region starts from.
      */
-    abstract int getXOffset();
+    abstract int getXOffset(); //TODO No need to redefine here
 
     /**
      * Gets the minimum texel row (included), in the y-axis of the {@link
@@ -526,7 +522,7 @@ public abstract non-sealed class Pixmap extends Canvas {
      * @return The minimum texel row (included), in the y-axis of the {@link
      * Texture} this {@link Pixmap} region starts from.
      */
-    abstract int getYOffset();
+    abstract int getYOffset(); //TODO No need to redefine here
 
     /**
      * Ensures that this {@link Pixmap} is open, i.e. {@link #isClosed()}

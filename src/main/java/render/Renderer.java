@@ -27,11 +27,27 @@ public class Renderer implements AutoCloseable {
         private final int[] HEIGHT_BUFFER = new int[1];
 
         @Override
-        protected Canvas.Bounds getBounds() {
+        protected int getXOffset() {
+            return 0;
+        }
+
+        @Override
+        protected int getYOffset() {
+            return 0;
+        }
+
+        @Override
+        protected int getWidth() {
             GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(),
-                    this.WIDTH_BUFFER, this.HEIGHT_BUFFER);
-            return new Canvas.Bounds(0, 0, this.WIDTH_BUFFER[0],
-                    this.HEIGHT_BUFFER[0]);
+                    this.WIDTH_BUFFER, null);
+            return this.WIDTH_BUFFER[0];
+        }
+
+        @Override
+        protected int getHeight() {
+            GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(), null,
+                    this.HEIGHT_BUFFER);
+            return this.HEIGHT_BUFFER[0];
         }
     };
     private static final int VERTICES_PER_QUAD = 6;
@@ -234,9 +250,8 @@ public class Renderer implements AutoCloseable {
             return;
         }//end if
 
-        final Canvas.Bounds CANVAS_BOUNDS = this.canvas.getBounds();
         final List<Texture> POST_TEXTURES = this.getPostTextures(
-                CANVAS_BOUNDS.width(), CANVAS_BOUNDS.height());
+                this.canvas.getWidth(), this.canvas.getHeight());
         final Color CLEAR_COLOR = new Color(0, 0, 0, 0);
         this.canvas.copyTo(POST_TEXTURES.get(0), this.CANVAS_FRAMEBUFFER_ID);
 
@@ -258,8 +273,8 @@ public class Renderer implements AutoCloseable {
             temp.clearCanvas(CLEAR_COLOR);
             temp.setBaseProgram(this.POST_PROGRAMS.get(this.POST_PROGRAMS.size()
                     - 1));
-            temp.draw(POST_TEXTURES.get(sourceIndex), CANVAS_BOUNDS.x(),
-                    CANVAS_BOUNDS.y());
+            temp.draw(POST_TEXTURES.get(sourceIndex), this.canvas.getXOffset(),
+                    this.canvas.getYOffset());
             temp.flush();
         }//end try-with-resources
     }
@@ -335,13 +350,16 @@ public class Renderer implements AutoCloseable {
     }
 
     private AffineTransform getCombined() {
-        Canvas.Bounds canvasBounds = this.canvas.getBounds();
-        final double CENTER_X = canvasBounds.x() + canvasBounds.width() / 2.0;
-        final double CENTER_Y = canvasBounds.y() + canvasBounds.height() / 2.0;
+        final int CANVAS_WIDTH = this.canvas.getWidth();
+        final int CANVAS_HEIGHT = this.canvas.getHeight();
+        final double CENTER_X = this.canvas.getXOffset() + CANVAS_WIDTH / 2.0;
+        final double CENTER_Y = this.canvas.getYOffset() + CANVAS_HEIGHT / 2.0;
+
         AffineTransform combined = AffineTransform.getScaleInstance(2.0 /
-                canvasBounds.width(), 2.0 / canvasBounds.height());
+                CANVAS_WIDTH, 2.0 / CANVAS_HEIGHT);
         combined.translate(-CENTER_X, -CENTER_Y);
         combined.concatenate(this.TRANSFORM);
+
         return combined;
     }
 
