@@ -2,6 +2,8 @@ package render;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13C;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
 import javax.imageio.ImageIO;
@@ -191,6 +193,24 @@ public final class Texture extends Pixmap implements AutoCloseable {
     public Texture(final int width, final int height, IntBinaryOperator
             texels) {
         this(width, height, Texture.toByteBuffer(width, height, texels));
+    }
+
+    public Texture(Texture other) {
+        super(other.getWidth(), other.getHeight());
+
+        final int FRAMEBUFFER_ID = GL30.glGenFramebuffers();
+        Texture texture = new Texture(other.getWidth(), other.getHeight());
+
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, FRAMEBUFFER_ID);
+        GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER,
+                GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, other.getId(),
+                0);
+
+        texture.bind();
+        GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0,
+                texture.getWidth(), texture.getHeight());
+
+        this.ID = texture.ID;
     }
 
     /**
