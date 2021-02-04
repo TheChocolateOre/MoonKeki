@@ -1,6 +1,5 @@
 package render;
 
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
@@ -22,34 +21,6 @@ public class Renderer implements AutoCloseable {
 
     private static record TextureSize(int width, int height) {}
 
-    public static final Canvas SCREEN = new Canvas.ScreenRegion() {
-        private final int[] WIDTH_BUFFER = new int[1];
-        private final int[] HEIGHT_BUFFER = new int[1];
-
-        @Override
-        protected int getXOffset() {
-            return 0;
-        }
-
-        @Override
-        protected int getYOffset() {
-            return 0;
-        }
-
-        @Override
-        protected int getWidth() {
-            GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(),
-                    this.WIDTH_BUFFER, null);
-            return this.WIDTH_BUFFER[0];
-        }
-
-        @Override
-        protected int getHeight() {
-            GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(), null,
-                    this.HEIGHT_BUFFER);
-            return this.HEIGHT_BUFFER[0];
-        }
-    };
     private static final int VERTICES_PER_QUAD = 6;
     private static final int FLOATS_PER_QUAD = 4 * Renderer.VERTICES_PER_QUAD;
     private static final int POST_TEXTURE_CACHE_SIZE = 5;
@@ -61,7 +32,7 @@ public class Renderer implements AutoCloseable {
     private final List<ShaderProgram> POST_PROGRAMS = new ArrayList<>();
     private final Map<Renderer.TextureSize, List<Texture>> POST_TEXTURES =
             new LinkedHashMap<>(Renderer.POST_TEXTURE_CACHE_SIZE, 0.75f, true);
-    private Canvas canvas = Renderer.SCREEN;
+    private Canvas canvas = Canvas.SCREEN;
     private final AffineTransform TRANSFORM = new AffineTransform();
     private final int CANVAS_FRAMEBUFFER_ID = GL30.glGenFramebuffers();
     private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();
