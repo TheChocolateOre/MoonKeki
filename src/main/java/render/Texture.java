@@ -209,6 +209,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
         texture.bind();
         GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0,
                 texture.getWidth(), texture.getHeight());
+        GL30.glDeleteFramebuffers(FRAMEBUFFER_ID);
 
         this.ID = texture.ID;
     }
