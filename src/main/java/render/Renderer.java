@@ -352,8 +352,10 @@ public class Renderer implements AutoCloseable {
     private AffineTransform getCombined() {
         final int CANVAS_WIDTH = this.canvas.getWidth();
         final int CANVAS_HEIGHT = this.canvas.getHeight();
-        final double CENTER_X = this.canvas.getXOffset() + CANVAS_WIDTH / 2.0;
-        final double CENTER_Y = this.canvas.getYOffset() + CANVAS_HEIGHT / 2.0;
+        //The canvas offset must not be taken into account, as it is effectively
+        //calculated through glViewport
+        final double CENTER_X = CANVAS_WIDTH / 2.0;
+        final double CENTER_Y = CANVAS_HEIGHT / 2.0;
 
         AffineTransform combined = AffineTransform.getScaleInstance(2.0 /
                 CANVAS_WIDTH, 2.0 / CANVAS_HEIGHT);
