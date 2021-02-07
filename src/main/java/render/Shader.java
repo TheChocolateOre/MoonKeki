@@ -1,5 +1,6 @@
 package render;
 
+import app.Application;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
@@ -68,6 +69,10 @@ public abstract sealed class Shader implements AutoCloseable {
         );
         public static final Vertex DEFAULT = new Unclosable(
                 Vertex.DEFAULT_CLOSABLE);
+
+        static {
+            Application.closeOnExit(Shader.Vertex.DEFAULT_CLOSABLE);
+        }//end static initializer
 
         public static Vertex fromPath(String path) throws IOException {
             return Vertex.ofSource(Files.readString(Path.of(path)));
@@ -148,6 +153,10 @@ public abstract sealed class Shader implements AutoCloseable {
         );
         public static final Fragment DEFAULT = new Unclosable(
                 Fragment.DEFAULT_CLOSABLE);
+
+        static {
+            Application.closeOnExit(Shader.Fragment.DEFAULT_CLOSABLE);
+        }//end static initializer
 
         public static Fragment fromPath(String path) throws IOException {
             return Fragment.ofSource(Files.readString(Path.of(path)));

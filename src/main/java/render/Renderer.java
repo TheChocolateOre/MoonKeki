@@ -32,7 +32,7 @@ public class Renderer implements AutoCloseable {
     private final List<ShaderProgram> POST_PROGRAMS = new ArrayList<>();
     private final Map<Renderer.TextureSize, List<Texture>> POST_TEXTURES =
             new LinkedHashMap<>(Renderer.POST_TEXTURE_CACHE_SIZE, 0.75f, true);
-    private Canvas canvas = Canvas.SCREEN;
+    private Canvas canvas = Canvas.WINDOW;
     private final AffineTransform TRANSFORM = new AffineTransform();
     private final int CANVAS_FRAMEBUFFER_ID = GL30.glGenFramebuffers();
     private final int BUFFER_OBJECT_ID = GL15.glGenBuffers();

@@ -1,5 +1,6 @@
 package render;
 
+import app.Application;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 
@@ -97,6 +98,10 @@ public sealed class ShaderProgram implements AutoCloseable {
     private final Map<String, Integer> UNIFORM_LOCATIONS = new LinkedHashMap<>(
             UNIFORM_CACHE_SIZE, 0.75f, true);
     private boolean closed;
+
+    static {
+        Application.closeOnExit(ShaderProgram.DEFAULT_CLOSABLE);
+    }//end static initializer
 
     //Only for wrapper ShaderProgram's'
     private ShaderProgram() {
