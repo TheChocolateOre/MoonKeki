@@ -28,13 +28,13 @@ public abstract sealed class Canvas permits Canvas.ScreenRegion, Pixmap {
         @Override
         protected abstract int getYOffset();
         @Override
-        protected abstract int getWidth();
+        public abstract int getWidth();
         @Override
-        protected abstract int getHeight();
+        public abstract int getHeight();
     }//end static nested class ScreenRegion
 
     //Hopefully no class loading deadlock here
-    public static final Canvas SCREEN = new ScreenRegion() {
+    public static final ScreenRegion WINDOW = new ScreenRegion() {
         private final int[] WIDTH_BUFFER = new int[1];
         private final int[] HEIGHT_BUFFER = new int[1];
 
@@ -49,14 +49,14 @@ public abstract sealed class Canvas permits Canvas.ScreenRegion, Pixmap {
         }
 
         @Override
-        protected int getWidth() {
+        public int getWidth() {
             GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(),
                     this.WIDTH_BUFFER, null);
             return this.WIDTH_BUFFER[0];
         }
 
         @Override
-        protected int getHeight() {
+        public int getHeight() {
             GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(), null,
                     this.HEIGHT_BUFFER);
             return this.HEIGHT_BUFFER[0];
