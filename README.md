@@ -198,8 +198,8 @@ overnight, at least for the later stable versions. Changes will be stated and
 migration guides will probably exist.
 
 ### Why using `double` and not `float`, won't that burn my pc?
-Welcome to 2020s, it rains chips that were considered supercomputers in the 80s.
-By the way, for the hardcore out there, the GPU uses `float`.
+Welcome to the 2020s, it rains chips that were considered supercomputers in the
+80s. By the way, for the hardcore out there, the GPU uses `float`.
 
 ### Can I create a game with this framework today, now?
 No, but soon. There are many things that need to be added (input system), and it
