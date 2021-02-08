@@ -78,7 +78,7 @@ there is no need to be an OpenGL expert and create ping-pong framebuffers and
 textures and bindings and whatever, just to simply have post processing effects
 or to draw a portion of an image or to draw on an image.
 4. Ease of codebase understanding for new users and contributors. I don't like 
-hacks, things that _"as long as it works it's ok"_. Everything must be 
+hacks, things like _"as long as it works it's ok"_. Everything must be 
 thoroughly thought. The solutions of today are the problems of tomorrow. The 
 codebase is intuitive and as loosely coupled as possible. I want it to be easy 
 to learn and **easy** to master. Also, there will be javadoc in every corner and
