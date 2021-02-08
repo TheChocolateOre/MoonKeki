@@ -163,37 +163,6 @@ public final class Application {
         this.pushScreen(screen, action);
     }
 
-    /**
-     * Renders this application. If there are no {@link Screen}s in the stack
-     * of this {@link Application}, it exits.
-     */
-    @Deprecated
-    public void render() {
-        this.onActiveScreen(s -> s.render(this), () -> {
-            //TODO Close app here
-        });
-    }
-
-    /**
-     * Pauses this application.
-     * @apiNote There is no guarantee in what will happen if this application is
-     * already paused.
-     */
-    @Deprecated
-    public void pause() {
-        this.onActiveScreen(Screen::pause);
-    }
-
-    /**
-     * Resumes this application.
-     * @apiNote There is no guarantee in what will happen if this application is
-     * already resumed.
-     */
-    @Deprecated
-    public void resume() {
-        this.onActiveScreen(Screen::resume);
-    }
-
     public double dt() {
         return this.prevFrameDurationSec;
     }
