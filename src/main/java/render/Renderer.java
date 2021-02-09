@@ -90,6 +90,11 @@ public class Renderer implements AutoCloseable {
 
     public void draw(Pixmap pixmap, float x, float y, float width, float
             height) {
+        this.draw(pixmap, x, y, width, height, false, false);
+    }
+
+    public void draw(Pixmap pixmap, float x, float y, float width, float height,
+            boolean flipX, boolean flipY) {
         this.ensureOpen();
 
         if (width < 0.0f) {
@@ -116,20 +121,41 @@ public class Renderer implements AutoCloseable {
             this.flush();
         }//end if
 
-                     //First triangle
-        this.vertices.put(x).put(y + height)                      //top left
-                     .put(pixmap.getMinU()).put(pixmap.getMaxV()) //top left
-                     .put(x + width).put(y + height)              //top right
-                     .put(pixmap.getMaxU()).put(pixmap.getMaxV()) //top right
-                     .put(x).put(y)                               //bottom left
-                     .put(pixmap.getMinU()).put(pixmap.getMinV()) //bottom left
+        final float MIN_U;
+        final float MAX_U;
+        final float MIN_V;
+        final float MAX_V;
+
+        if (flipX) {
+            MIN_U = pixmap.getMaxU();
+            MAX_U = pixmap.getMinU();
+        } else {
+            MIN_U = pixmap.getMinU();
+            MAX_U = pixmap.getMaxU();
+        }//end if
+
+        if (flipY) {
+            MIN_V = pixmap.getMaxV();
+            MAX_V = pixmap.getMinV();
+        } else {
+            MIN_V = pixmap.getMinV();
+            MAX_V = pixmap.getMaxV();
+        }//end if
+
+        //First triangle
+        this.vertices.put(x).put(y + height)         //top left
+                     .put(MIN_U).put(MAX_V)          //top left
+                     .put(x + width).put(y + height) //top right
+                     .put(MAX_U).put(MAX_V)          //top right
+                     .put(x).put(y)                  //bottom left
+                     .put(MIN_U).put(MIN_V)          //bottom left
                      //Second triangle
-                     .put(x + width).put(y + height)              //top right
-                     .put(pixmap.getMaxU()).put(pixmap.getMaxV()) //top right
-                     .put(x).put(y)                               //bottom left
-                     .put(pixmap.getMinU()).put(pixmap.getMinV()) //bottom left
-                     .put(x + width).put(y)                       //bottom right
-                     .put(pixmap.getMaxU()).put(pixmap.getMinV());//bottom right
+                     .put(x + width).put(y + height) //top right
+                     .put(MAX_U).put(MAX_V)          //top right
+                     .put(x).put(y)                  //bottom left
+                     .put(MIN_U).put(MIN_V)          //bottom left
+                     .put(x + width).put(y)          //bottom right
+                     .put(MAX_U).put(MIN_V);         //bottom right
 
         ++this.size;
         this.currentPixmap = pixmap;

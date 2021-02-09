@@ -177,7 +177,7 @@ perspective, and there are even more interesting ones, like
 forget [Project Amber](https://openjdk.java.net/projects/amber/) which increases
 productivity and makes your code easier to read and maintain.
 
-I like to think Java as a **safe**, **powerful** with great **performance**
+I like to think of Java as a **safe**, **powerful** with great **performance**
 language, that truly lives to its **general purpose** attribute. There is no
 reason why you shouldn't create games with Java.
 
@@ -199,7 +199,7 @@ migration guides will probably exist.
 
 ### Why using `double` and not `float`, won't that burn my pc?
 Welcome to the 2020s, it rains chips that were considered supercomputers in the
-80s. By the way, for the hardcore out there, the GPU uses `float`.
+80s. In the GPU, we use `float` though.
 
 ### Can I create a game with this framework today, now?
 No, but soon. There are many things that need to be added (input system), and it
