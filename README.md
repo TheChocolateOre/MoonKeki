@@ -61,7 +61,9 @@ Renderer what we want to draw, and when we are ready we `r.flush()` it. We can
    ```
    You can even combine the post processing with rendering to a texture. And of
 course you could define effects that apply when drawing, not only for post 
-processing, with `r.setBaseProgram(..)`.
+processing, with `r.setBaseProgram(..)`. Also, the `r.applyPost()` method is not
+related to `r.draw(..)`, so you can just apply the post processing effects,
+without drawing images in advance, and as many times as you like.
    
    Sometimes you might want to draw a portion of an image:
    ```java
@@ -82,7 +84,7 @@ hacks, things like _"as long as it works it's ok"_. Everything must be
 thoroughly thought. The solutions of today are the problems of tomorrow. The 
 codebase is intuitive and as loosely coupled as possible. I want it to be easy 
 to learn and **easy** to master. Also, there will be javadoc in every corner and
-dark place, even though now that's not true, but I'm working towards that with
+dark place, even though now that's not true, but I'm working towards that with a
 high priority.
    
 ### What are you sacrificing to achieve the above values?
@@ -120,6 +122,9 @@ have to know anything about OpenGL or how graphic cards work. That being said,
 at some point you might want to add effects, or the so-called shaders into the 
 game, and that requires to write a bit of code with the GLSL language. You can't
 access OpenGL directly with this framework.
+
+### What version of OpenGL this framework uses?
+3.3 core and below.
 
 ### I can only create games?
 You can create **applications** too! This framework basically draws stuff on the
