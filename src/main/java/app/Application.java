@@ -236,6 +236,10 @@ public final class Application {
         boolean loop = !GLFW.glfwWindowShouldClose(this.windowId);
         while (loop) {
             final long START_TIMESTAMP = System.nanoTime();
+            if (this.SCREENS.isEmpty()) {
+                return;
+            }//end if
+
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
@@ -252,17 +256,13 @@ public final class Application {
                 windowSizeChanged = true;
             }//end if
 
-            final Screen ACTIVE_SCREEN = this.getActiveScreen();
-            if (ACTIVE_SCREEN == null) {
-                return;
-            }//end if
-
             if (windowSizeChanged) {
-                ACTIVE_SCREEN.onWindowResize(WINDOW_WIDTH, WINDOW_HEIGHT);
+                this.SCREENS.forEach(s -> s.onWindowResize(WINDOW_WIDTH,
+                        WINDOW_HEIGHT));
             }//end if
 
             if (WINDOW_WIDTH != 0 && WINDOW_HEIGHT != 0) {
-                ACTIVE_SCREEN.render(this);
+                this.onActiveScreen(s -> s.render(this));
             }//end if
 
             GLFW.glfwSwapBuffers(this.windowId);
