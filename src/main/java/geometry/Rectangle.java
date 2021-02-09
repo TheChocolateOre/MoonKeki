@@ -7,7 +7,7 @@ import java.util.Objects;
  * Represents a rectangle in a 2d plane, with its origin at its bottom left
  * corner.
  */
-public class Rectangle extends Spacial {
+public class Rectangle implements Spatial {
 
     /**
      * An immutable {@link Rectangle}, i.e. its position or size can't change.
@@ -37,6 +37,16 @@ public class Rectangle extends Spacial {
         }
 
     }//end static nested class Immutable
+
+    /**
+     * The x coordinate of the bottom left corner of this Rectangle.
+     */
+    private double x;
+
+    /**
+     * The y coordinate of the bottom left corner of this Rectangle.
+     */
+    private double y;
 
     /**
      * The width of this Rectangle.
@@ -112,18 +122,6 @@ public class Rectangle extends Spacial {
     }
 
     /**
-     * Creates an unmodifiable {@link Rectangle} that is a copy of a given
-     * {@link Rectangle}.
-     * @param r A {@link Rectangle} to create an unmodifiable copy out of it.
-     * @return An unmodifiable {@link Rectangle} that is a copy of the given
-     * {@link Rectangle}.
-     */
-    @Deprecated
-    public static Rectangle unmodifiable(Rectangle r) {
-        return new Immutable(r);
-    }
-
-    /**
      * Creates a Rectangle with its bottom left corner at (0.0, 0.0), width
      * and height of 0.0.
      */
@@ -134,9 +132,10 @@ public class Rectangle extends Spacial {
      * @param other A Rectangle to create a copy out of it.
      */
     public Rectangle(Rectangle other) {
-        super(other);
-        this.width = other.getWidth();
-        this.height = other.getHeight();
+        this.x = other.x;
+        this.y = other.y;
+        this.width = other.width;
+        this.height = other.height;
     }
 
     /**
@@ -146,11 +145,31 @@ public class Rectangle extends Spacial {
      * @param y The y coordinate of the bottom left corner of this Rectangle.
      * @param width The width of this Rectangle.
      * @param height The height of this Rectangle.
+     * @throws IllegalArgumentException If x is not finite.
+     * @throws IllegalArgumentException If y is not finite.
+     * @throws IllegalArgumentException If width is not finite.
+     * @throws IllegalArgumentException If height is not finite.
      * @throws IllegalArgumentException If width < 0.0.
      * @throws IllegalArgumentException If height < 0.0.
      */
     public Rectangle(double x, double y, double width, double height) {
-        super(x, y);
+        if (!Double.isFinite(x)) {
+            throw new IllegalArgumentException("Argument x must be finite.");
+        }//end if
+
+        if (!Double.isFinite(y)) {
+            throw new IllegalArgumentException("Argument y must be finite.");
+        }//end if
+
+        if (!Double.isFinite(width)) {
+            throw new IllegalArgumentException("Argument width must be " +
+                    "finite.");
+        }//end if
+
+        if (!Double.isFinite(height)) {
+            throw new IllegalArgumentException("Argument height must be " +
+                    "finite.");
+        }//end if
 
         //Validates that width >= 0.0
         if (width < 0.0) {
@@ -164,8 +183,53 @@ public class Rectangle extends Spacial {
                     "0.0.");
         }//end if
 
+        this.x = x;
+        this.y = y;
         this.width = width;
         this.height = height;
+    }
+
+    /**
+     * Gets the x coordinate of the bottom left corner of this Rectangle.
+     * @return The x coordinate of the bottom left corner of this Rectangle.
+     */
+    @Override
+    public double getX() {
+        return this.x;
+    }
+
+    /**
+     * Gets the y coordinate of the bottom left corner of this Rectangle.
+     * @return The y coordinate of the bottom left corner of this Rectangle.
+     */
+    @Override
+    public double getY() {
+        return this.y;
+    }
+
+    /**
+     * Sets the position of the bottom left corner of this Rectangle.
+     * This method will always be called when the position of the bottom left
+     * corner of this Rectangle needs to be changed.
+     * @param x The new x coordinate of the bottom left corner of this
+     * Rectangle.
+     * @param y The new y coordinate of the bottom left corner of this
+     * Rectangle.
+     * @throws IllegalArgumentException If x is not finite.
+     * @throws IllegalArgumentException If y is not finite.
+     */
+    @Override
+    public void setPosition(double x, double y) {
+        if (!Double.isFinite(x)) {
+            throw new IllegalArgumentException("Argument x must be finite.");
+        }//end if
+
+        if (!Double.isFinite(y)) {
+            throw new IllegalArgumentException("Argument y must be finite.");
+        }//end if
+
+        this.x = x;
+        this.y = y;
     }
 
     /**
@@ -500,10 +564,22 @@ public class Rectangle extends Spacial {
      * when the size of this Rectangle needs to be changed.
      * @param width The new width of this Rectangle.
      * @param height The new height of this Rectangle.
+     * @throws IllegalArgumentException If width is not finite.
+     * @throws IllegalArgumentException If height is not finite.
      * @throws IllegalArgumentException If width < 0.0.
      * @throws IllegalArgumentException If height < 0.0.
      */
     public void setSize(double width, double height) {
+        if (!Double.isFinite(width)) {
+            throw new IllegalArgumentException("Argument width must be " +
+                    "finite.");
+        }//end if
+
+        if (!Double.isFinite(height)) {
+            throw new IllegalArgumentException("Argument height must be " +
+                    "finite.");
+        }//end if
+
         //Validates that width >= 0.0
         if (width < 0.0) {
             throw new IllegalArgumentException("Argument width must be >= " +
@@ -1064,23 +1140,31 @@ public class Rectangle extends Spacial {
      */
     @Override
     public String toString() {
-        return String.format("%s, width: %f, height: %f",
-                super.toString(), this.getWidth(), this.getHeight());
+        return String.format("x :%f, y: %f, width: %f, height: %f", this.getX(),
+                this.getY(), this.getWidth(), this.getHeight());
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        if (!super.equals(o)) return false;
-        Rectangle rectangle = (Rectangle) o;
-        return Double.compare(rectangle.getWidth(), getWidth()) == 0 &&
-                Double.compare(rectangle.getHeight(), getHeight()) == 0;
+        if (this == o) {
+            return true;
+        }//end if
+
+        if (null == o) {
+            return false;
+        }//end if
+
+        return (o instanceof Rectangle r) &&
+                Double.compare(this.getX(), r.getX()) == 0 &&
+                Double.compare(this.getY(), r.getY()) == 0 &&
+                Double.compare(this.getWidth(), r.getWidth()) == 0 &&
+                Double.compare(this.getHeight(), r.getHeight()) == 0;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), getWidth(), getHeight());
+        return Objects.hash(this.getX(), this.getY(), this.getWidth(),
+                this.getHeight());
     }
 
 }//end class Rectangle

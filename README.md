@@ -248,7 +248,7 @@ is to package a .jar of your game alongside a JVM (don't forget to use ZGC).
 Take a look at [Packaging Tool](https://openjdk.java.net/jeps/392). That's all I
 can say for now. When I'll deploy my game, I'll let you know how I did it.
 
-### Near future features?
+### Future features?
 1. Input system (lol *there is no input system*).
 2. Sprite-like objects (almost finished).
 3. Collision system (somewhat finished).
@@ -256,6 +256,8 @@ can say for now. When I'll deploy my game, I'll let you know how I did it.
 5. Enchantments in the `app` package.
 6. GitHub wiki tutorials (hopefully in the near future).
 7. Texture atlas (not sure if it can make it in the near future).
+8. Sound system (I'm not sure if OpenAL is the way or just using the Java sound
+   API or letting the user figure out themselves).
 
 ### Will you continue development or take the year off?
 Ok, you got me. I will be taking most of the year (2021) off. This repository
