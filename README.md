@@ -285,7 +285,7 @@ if (event.hasOccurredForAtLeast(0.5, true)) {
 Above, we create a `ButtonEvent` that tracks a **pressed** `LEFT` mouse click, a
 **pressed** `A` keyboard button and a **released** `V` keyboard button. That is,
 we are interested in whether the above 3 independent button states occurred at 
-the **same time**. The `hasOccurredForAtLeast` method takes a duration in 
+the **same time**. The `hasOccurredForAtLeast()` method takes a duration in 
 seconds and returns `true` *iff* the event occurred and lasted at least as long
 as the given duration, at least once. The second boolean argument indicates if
 the first threshold is inclusive or not. In the above example, we just
