@@ -1,6 +1,11 @@
 # MoonKeki
 A 2D game development framework with OpenGL backend, written in Java.
 
+**Attention!** This is work in progress. The API might and is very likely to
+change substantially. Tests are absent or minimally performed.
+
+___
+
 ### Is this a library, framework or game engine?
 I think of libraries as code that your code calls. Frameworks, as code that 
 calls your code and engines as platforms that support game development 
@@ -105,7 +110,7 @@ level graphic card control, then this framework is probably not for you.
 
 ### Is this cross platform?
 It is desktop cross platform. You can't run it on mobile or playstation or xbox
-or switch :(. And even in desktop, you probably won't be able to use it with 
+or switch :( And even on desktop, you probably won't be able to use it with 
 macOS, as Apple deprecated OpenGL. So it works on Windows and Linux. I have high
 hopes for [Fuchsia OS](https://fuchsia.dev/) to solve the cross platform 
 problems. At the end of the day don't forget that to run Java code you only need
@@ -239,6 +244,78 @@ Application.configuration()
 Important! Don't use any class unless the .build() in the above code has been
 called! Keep in mind that the `render` package is more mature than the `app`.
 
+### How to process input?
+There is an input system present, but in an early form. Consider the example 
+below:
+```java
+//We are interesting when the "X" button is pressed.   Or false for release
+ButtonEvent xButtonEvent = ButtonEvent.of(Keyboard.Key.X, true);
+if (xButtonEvent.hasOccurred()) {
+    player.attack();
+}
+```
+The above `if` condition will pass even if the `X` button is not currently being
+pressed. The `hasOccurred()` method tracks whether the event happened since the
+last `hasOccurred()` or `reset()` call. You might feel confused on why we care
+about whether the event occurred in the past. Clearly, we want the player to
+unleash an attack when the `X` button is pressed, so why don't we query just
+that, and not the past. Ok, so to query that we would use the `isHappening()`
+method, which returns `true` *iff* the event (`X` button press in our case) is
+happening at this moment. Now's the catch. The `X` button might be pressed, but
+at the time we query that with the `isHappening()` it might be already released.
+The user pressed the button, but no attack was unleashed. The event got buried.
+That's the value of `hasOccurred()`, it makes sure to miss nothing. Ok, so when
+to use `hasOccurred()` and when to use `isHappening()`? Use the former if you
+care about the existence of the event, that is, I need to know if the event
+occurred no matter what. Use the latter if you want to know if the event is
+happening at this very moment, e.g. as long as that button is down, do that.
+Most of the times though, you'll probably want to use the `hasOccurred()`.
+
+Ok, let's go crazy with input events:
+```java
+ButtonEvent event = ButtonEvent.builder()
+                               .add(Mouse.Button.LEFT, true)
+                               .add(Keyboard.Key.A, true)
+                               .add(Keyboard.Key.V, false)
+                               .build();
+if (event.hasOccurredForAtLeast(0.5, true)) {
+    ...
+}
+```
+Above, we create a `ButtonEvent` that tracks a **pressed** `LEFT` mouse click, a
+**pressed** `A` keyboard button and a **released** `V` keyboard button. That is,
+we are interested in whether the above 3 independent button states occurred at 
+the **same time**. The `hasOccurredForAtLeast` method takes a duration in 
+seconds and returns `true` *iff* the event occurred and lasted at least as long
+as the given duration, at least once. The second boolean argument indicates if
+the first threshold is inclusive or not. In the above example, we just
+want to know if those 3 buttons were at their desired states concurrently for
+at least 0.5 seconds. And yes, we keep track if the `V` keyboard button is not
+pressed, i.e. released (`false` value).
+
+Ok, I get all that, but what's the point of 2 events that track the same 
+buttons? Aren't they the same? No, they are different, and here's why.
+`ButtonEvent`s are in a sense consumables, every time a method like 
+`hasOccurred()` is called, their state resets. With that in mind, we could have
+2 events that track the same button-states, but return different values when
+their consumable methods are called, and that's because 1 might be already
+consumed, while the other not. That's perfectly ok. Now, it might not seem that
+obvious on why we might want that, especially when considering the identical 
+button-state case. It seems more clear when we have events that share a few
+buttons. It would be impossible to consume 1 event, without destroying the 
+state of the others, if the individual buttons where universally tracked.
+
+Most of the time we just want an action to be performed when a button is pressed
+or released. If that's your case, then consider the utility-ish class 
+`ButtonEventProcessor`:
+```java
+ButtonEventProcessor attackProcessor = ButtonEventProcessor.ofButtonPress(
+        Keyboard.Key.X, player::attack);
+```
+After that, you must call its `process()` method on **every** game loop, and it 
+will do all the work for you. But again, you already can achieve that with a
+`ButtonEvent`, this way just has less boilerplate.
+
 ### How to leave feedback?
 You can open an issue or engage in the GitHub Discussions.
 
@@ -249,15 +326,17 @@ Take a look at [Packaging Tool](https://openjdk.java.net/jeps/392). That's all I
 can say for now. When I'll deploy my game, I'll let you know how I did it.
 
 ### Future features?
-1. Input system (lol *there is no input system*).
-2. Sprite-like objects (almost finished).
-3. Collision system (somewhat finished).
+1. ~~Input system.~~ (Basic addition)
+2. Sprite-like objects.
+3. Collision system.
 4. Excessive javadoc.
 5. Enchantments in the `app` package.
-6. GitHub wiki tutorials (hopefully in the near future).
-7. Texture atlas (not sure if it can make it in the near future).
-8. Sound system (I'm not sure if OpenAL is the way or just using the Java sound
-   API or letting the user figure out themselves).
+6. GitHub wiki tutorials.
+7. Texture atlas.
+8. Sound system. (OpenAL is probably an overkill. The Java Sound API seems
+   sufficient)
+9. Text rendering? (You can achieve that as of now with characters in textures)
+10. Geometric shapes rendering? (for debugging)
 
 ### Will you continue development or take the year off?
 Ok, you got me. I will be taking most of the year (2021) off. This repository

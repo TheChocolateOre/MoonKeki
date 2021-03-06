@@ -698,7 +698,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is above the given Rectangle,
      * otherwise false.
      */
-
     public boolean isAboveOf(Rectangle other) {
         return this.isStrictlyAboveOf(other) || this.getY() == other.getTopY();
     }
@@ -712,7 +711,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is strictly above the given
      * Rectangle, otherwise false.
      */
-
     public boolean isStrictlyAboveOf(Rectangle other) {
         return this.getY() > other.getTopY();
     }
@@ -726,7 +724,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is below the given
      * Rectangle, otherwise false.
      */
-
     public boolean isBelowOf(Rectangle other) {
         return this.isStrictlyBelowOf(other) || this.getTopY() == other.getY();
     }
@@ -740,7 +737,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is strictly below the given
      * Rectangle, otherwise false.
      */
-
     public boolean isStrictlyBelowOf(Rectangle other) {
         return other.isStrictlyAboveOf(this);
     }
@@ -755,7 +751,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is at the right of the given
      * Rectangle, otherwise false.
      */
-
     public boolean isRightOf(Rectangle other) {
         return this.isStrictlyRightOf(other) || other.getRightX() ==
                 this.getX();
@@ -771,7 +766,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is strictly at the right of
      * the given Rectangle, otherwise false.
      */
-
     public boolean isStrictlyRightOf(Rectangle other) {
         return other.getRightX() < this.getX();
     }
@@ -785,7 +779,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is at the left of the given
      * Rectangle, otherwise false.
      */
-
     public boolean isLeftOf(Rectangle other) {
         return this.isStrictlyLeftOf(other) || this.getRightX() == other.getX();
     }
@@ -800,7 +793,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle is strictly at the left of
      * the given Rectangle, otherwise false.
      */
-
     public boolean isStrictlyLeftOf(Rectangle other) {
         return other.isStrictlyRightOf(this);
     }
@@ -813,7 +805,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle overlaps with the given
      * Rectangle, otherwise false.
      */
-
     public boolean overlaps(Rectangle other) {
         return this.overlapsX(other) && this.overlapsY(other);
     }
@@ -828,7 +819,6 @@ public class Rectangle implements Spatial {
      * @return True if and only if this Rectangle strictly overlaps with the
      * given Rectangle, otherwise false.
      */
-
     public boolean overlapsStrict(Rectangle other) {
         return this.strOverlapsX(other) && this.strOverlapsY(other);
     }
@@ -843,7 +833,6 @@ public class Rectangle implements Spatial {
      * @return True if this Rectangle is on the left side of the given
      * Rectangle, otherwise false.
      */
-
     public boolean isOnLeftOf(Rectangle other) {
         return this.getRightX() == other.getX() &&
                 !this.isStrictlyAboveOf(other) &&
@@ -860,7 +849,6 @@ public class Rectangle implements Spatial {
      * @return True if this Rectangle is on the right side of the given
      * Rectangle, otherwise false.
      */
-
     public boolean isOnRightOf(Rectangle other) {
         return other.isOnLeftOf(this);
     }
@@ -875,7 +863,6 @@ public class Rectangle implements Spatial {
      * @return True if this Rectangle is on the top side of the given Rectangle,
      * otherwise false.
      */
-
     public boolean isOnTopOf(Rectangle other) {
         return this.getY() == other.getTopY() && !this.isStrictlyLeftOf(other)
                 && !this.isStrictlyRightOf(other);
@@ -892,7 +879,6 @@ public class Rectangle implements Spatial {
      * @return True if this Rectangle is on the bottom side of the given
      * Rectangle, otherwise false.
      */
-
     public boolean isOnBottomOf(Rectangle other) {
         return other.isOnTopOf(this);
     }
@@ -908,7 +894,6 @@ public class Rectangle implements Spatial {
      * @return True if the x areas of this and the given Rectangle, strictly
      * overlap, otherwise false.
      */
-
     public boolean strOverlapsX(Rectangle other) {
         return !(this.isLeftOf(other) || this.isRightOf(other));
     }
@@ -924,7 +909,6 @@ public class Rectangle implements Spatial {
      * @return True if the y areas of this and the given Rectangle, strictly
      * overlap, otherwise false.
      */
-
     public boolean strOverlapsY(Rectangle other) {
         return !(this.isBelowOf(other) || this.isAboveOf(other));
     }
@@ -938,7 +922,6 @@ public class Rectangle implements Spatial {
      * @return True if the x areas of this and the given Rectangle, overlap,
      * otherwise false.
      */
-
     public boolean overlapsX(Rectangle other) {
         return !(this.isStrictlyLeftOf(other) || this.isStrictlyRightOf(other));
     }
@@ -952,7 +935,6 @@ public class Rectangle implements Spatial {
      * @return True if the y areas of this and the given Rectangle, overlap,
      * otherwise false.
      */
-
     public boolean overlapsY(Rectangle other) {
         return !(this.isStrictlyBelowOf(other) ||
                 this.isStrictlyAboveOf(other));
@@ -967,7 +949,6 @@ public class Rectangle implements Spatial {
      * @return True if the given point is contained in this Rectangle, otherwise
      * false.
      */
-
     public boolean contains(double x, double y) {
         return !(x < this.getX() || x > this.getRightX() || y < this.getY() ||
                 y > this.getTopY());
@@ -1120,7 +1101,6 @@ public class Rectangle implements Spatial {
      * Calculates the area of this Rectangle.
      * @return The area of this Rectangle.
      */
-
     public double area() {
         return this.getWidth() * this.getHeight();
     }
@@ -1129,7 +1109,6 @@ public class Rectangle implements Spatial {
      * Calculates the perimeter of this Rectangle.
      * @return The perimeter of this Rectangle.
      */
-
     public double perimeter() {
         return 2.0 * (this.getWidth() + this.getHeight());
     }
