@@ -212,11 +212,11 @@ Welcome to the 2020s, it rains chips that were considered supercomputers in the
 80s. In the GPU, we use `float` though.
 
 ### Can I create a game with this framework today, now?
-No, but soon. There are many things that need to be added (input system), and it
-is not fully tested yet. That being said, you should be able to run it, and
-render stuff on the screen. Its core has been established, it just needs to 
-mature a little. I encourage you to try it, your feedback is greatly 
-appreciated! (the power of open source software)
+If you are brave enough, but I would advise against it. There are many things 
+that need to be added, and it is not fully tested yet. That being said, you 
+should be able to run it, and render stuff on the screen. Its core has been 
+established, it just needs to mature a little. I encourage you to try it, your 
+feedback is greatly appreciated! (the power of open source software)
   
 ### How to use this software?
 For now, you have to git clone or copy the code. Don't forget to use Java 15 and
