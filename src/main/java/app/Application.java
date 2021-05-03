@@ -20,6 +20,14 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 
 public final class Application {
 
+    public interface Core {
+        void render(double dt);
+        void onWindowResize(int windowWidth, int windowHeight);
+        void pause();
+        void resume();
+        boolean isClosed();
+    }//end interface Core
+
     public static final class Builder {
         public static record Position(int x, int y) {}
         public static record Size(int width, int height) {
@@ -44,7 +52,7 @@ public final class Application {
         private String windowTitle;
         private WindowPositionFunction windowPositionFunction;
         private BiFunction<Integer, Integer, Size> windowSizeFunction;
-        private BiFunction<Integer, Integer, Screen> startScreenSupplier;
+        private BiFunction<Integer, Integer, Core> coreSupplier;
 
         private Builder() {}
 
@@ -66,22 +74,81 @@ public final class Application {
             return this;
         }
 
-        public void build(BiFunction<Integer, Integer, Screen>
-                startScreenSupplier) {
-            this.startScreenSupplier = startScreenSupplier;
-            new Application().start(this);
+        //(windowWidth, windowHeight) -> Core
+        public void build(BiFunction<Integer, Integer, Core> coreSupplier) {
+            this.coreSupplier = coreSupplier;
+            new Application(this).lifecycle();
         }
     }//end static nested class Builder
 
-    private static final List<AutoCloseable> CLOSE_LIST = new ArrayList<>();
+    private static final List<AutoCloseable> CLOSE_LIST = new LinkedList<>();
 
     /**
      * A {@link Deque}, used as a stack, with the {@link Screen}s of this
      * application.
      */
+    @Deprecated
     private final Deque<Screen> SCREENS = new ArrayDeque<>();
+    @Deprecated
     private double prevFrameDurationSec;
     private long windowId;
+    private Core core;
+
+    private Application(Builder builder) {
+        GLFWErrorCallback.createPrint(System.err).set();
+
+        if (!GLFW.glfwInit()) {
+            throw new IllegalStateException("Can't initialize GLFW.");
+        }//end if
+
+        GLFW.glfwDefaultWindowHints();
+        GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
+        GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE);
+
+        GLFWVidMode videoMode = GLFW.glfwGetVideoMode(
+                GLFW.glfwGetPrimaryMonitor());
+        Builder.Size windowSize = builder.windowSizeFunction.apply(
+                videoMode.width(), videoMode.height());
+        final long WINDOW_ID = GLFW.glfwCreateWindow(windowSize.width(),
+                windowSize.height(), builder.windowTitle, MemoryUtil.NULL,
+                MemoryUtil.NULL);
+        if (WINDOW_ID == MemoryUtil.NULL) {
+            throw new RuntimeException("Can't create GLFW window.");
+        }//end if
+
+        try (MemoryStack stack = stackPush()) {
+            IntBuffer windowWidthBuffer = stack.mallocInt(1);
+            IntBuffer windowHeightBuffer = stack.mallocInt(1);
+            GLFW.glfwGetWindowSize(WINDOW_ID, windowWidthBuffer,
+                    windowHeightBuffer);
+
+            Builder.Position windowPosition = builder.windowPositionFunction
+                    .apply(videoMode.width(), videoMode.height(),
+                    windowWidthBuffer.get(0), windowHeightBuffer.get(0));
+            GLFW.glfwSetWindowPos(WINDOW_ID, windowPosition.x(),
+                    windowPosition.y);
+        }//end try-with-resources
+
+        GLFW.glfwMakeContextCurrent(WINDOW_ID);
+        GLFW.glfwSwapInterval(1); //Vsync on
+
+        GLFW.glfwShowWindow(WINDOW_ID);
+        GL.createCapabilities();
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        this.core = builder.coreSupplier.apply(Canvas.WINDOW.getWidth(),
+                                               Canvas.WINDOW.getHeight());
+        this.windowId = WINDOW_ID;
+
+        GLFW.glfwSetWindowFocusCallback(WINDOW_ID, (windowId, focused) -> {
+            if (focused) {
+                Application.this.core.resume();
+            } else {
+                Application.this.core.pause();
+            }//end if
+        });
+    }
 
     public static void closeOnExit(AutoCloseable closeable) {
         Application.CLOSE_LIST.add(closeable);
@@ -91,8 +158,6 @@ public final class Application {
         return new Application.Builder();
     }
 
-    private Application() {}
-
     /**
      * Adds a {@link Screen} on the top of the {@link Screen}s stack of this
      * {@link Application}. The newly added {@link Screen} will become the active
@@ -101,6 +166,7 @@ public final class Application {
      * {@link Screen}s stack of this {@link Application}. It will become the active
      * {@link Screen} of this application.
      */
+    @Deprecated
     public void pushScreen(Screen screen) {
         this.pushScreen(screen, s -> {});
     }
@@ -116,6 +182,7 @@ public final class Application {
      * @param action A {@link Consumer} that will accept the given
      * {@link Screen}, to perform an action on it.
      */
+    @Deprecated
     public void pushScreen(Screen screen, Consumer<Screen> action) {
         this.SCREENS.push(screen);
         action.accept(screen);
@@ -126,6 +193,7 @@ public final class Application {
      * @throws NoSuchElementException If there are no {@link Screen}s
      * in this application.
      */
+    @Deprecated
     public void popScreen() {
         this.SCREENS.pop();
     }
@@ -139,6 +207,7 @@ public final class Application {
      * @param screen A {@link Screen} to replace the active {@link Screen} of
      * this application.
      */
+    @Deprecated
     public void replaceScreen(Screen screen) {
         this.replaceScreen(screen, s -> {});
     }
@@ -156,6 +225,7 @@ public final class Application {
      * @param action A {@link Consumer} that will accept the given
      * {@link Screen}, to perform an action on it.
      */
+    @Deprecated
     public void replaceScreen(Screen screen, Consumer<Screen> action) {
         if (!this.SCREENS.isEmpty()) {
             this.popScreen();
@@ -163,16 +233,17 @@ public final class Application {
         this.pushScreen(screen, action);
     }
 
+    @Deprecated
     public double dt() {
         return this.prevFrameDurationSec;
     }
 
-    private void start(Application.Builder builder) {
-        this.init(builder);
+    private void lifecycle() {
         this.loop();
         this.close();
     }
 
+    @Deprecated
     private void init(Application.Builder builder) {
         GLFWErrorCallback.createPrint(System.err).set();
 
@@ -204,7 +275,8 @@ public final class Application {
             Builder.Position windowPosition = builder.windowPositionFunction
                     .apply(videoMode.width(), videoMode.height(),
                     windowWidthBuffer.get(0), windowHeightBuffer.get(0));
-            GLFW.glfwSetWindowPos(WINDOW_ID, windowPosition.x(), windowPosition.y);
+            GLFW.glfwSetWindowPos(WINDOW_ID, windowPosition.x(),
+                    windowPosition.y);
         }//end try-with-resources
 
         GLFW.glfwMakeContextCurrent(WINDOW_ID);
@@ -215,9 +287,9 @@ public final class Application {
         GL11.glEnable(GL11.GL_BLEND);
         GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        this.pushScreen(builder.startScreenSupplier.apply(
+        /*this.pushScreen(builder.coreSupplier.apply(
                 Canvas.WINDOW.getWidth(), Canvas.WINDOW.getHeight()),
-                Screen::resume);
+                Screen::resume);*/
 
         GLFW.glfwSetWindowFocusCallback(WINDOW_ID, (windowId, focused) -> {
             if (focused) {
@@ -231,14 +303,19 @@ public final class Application {
     }
 
     private void loop() {
+        boolean loop = !GLFW.glfwWindowShouldClose(this.windowId) &&
+                       !this.core.isClosed();
+        if (!loop) {
+            return;
+        }//end if
+
+        this.core.resume();
         int prevWindowWidth = Canvas.WINDOW.getWidth();
         int prevWindowHeight = Canvas.WINDOW.getHeight();
-        boolean loop = !GLFW.glfwWindowShouldClose(this.windowId);
+        double dt = 0.0;
+
         while (loop) {
             final long START_TIMESTAMP = System.nanoTime();
-            if (this.SCREENS.isEmpty()) {
-                return;
-            }//end if
 
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
@@ -257,35 +334,35 @@ public final class Application {
             }//end if
 
             if (windowSizeChanged) {
-                this.SCREENS.forEach(s -> s.onWindowResize(WINDOW_WIDTH,
-                        WINDOW_HEIGHT));
+                this.core.onWindowResize(WINDOW_WIDTH, WINDOW_HEIGHT);
             }//end if
 
             if (WINDOW_WIDTH != 0 && WINDOW_HEIGHT != 0) {
-                this.onActiveScreen(s -> s.render(this));
+                this.core.render(dt);
             }//end if
 
             GLFW.glfwSwapBuffers(this.windowId);
             GLFW.glfwPollEvents();
 
-            loop = !GLFW.glfwWindowShouldClose(this.windowId);
-            this.prevFrameDurationSec = (System.nanoTime() - START_TIMESTAMP) /
-                    1_000_000_000.0;
+            loop = !GLFW.glfwWindowShouldClose(this.windowId) &&
+                   !this.core.isClosed();
+            dt = (System.nanoTime() - START_TIMESTAMP) / 1_000_000_000.0;
         }//end while
     }
 
     private void close() {
-        this.SCREENS.forEach(Screen::close);
-
         //this instance is effectively singleton, so we can "mutate" static
         //state
-        for (AutoCloseable c : Application.CLOSE_LIST) {
+        Iterator<AutoCloseable> itr = Application.CLOSE_LIST.iterator();
+        while (itr.hasNext()) {
+            AutoCloseable c = itr.next();
             try {
                 c.close();
             } catch (Exception ignored) {
 
             }//end try
-        }//end for
+            itr.remove();
+        }//end while
 
         // Free the window callbacks and destroy the window
         glfwFreeCallbacks(this.windowId);
@@ -302,6 +379,7 @@ public final class Application {
      * @param action A {@link Consumer} to perform an action on the active
      * {@link Screen} of this {@link Application}, if it exists.
      */
+    @Deprecated
     private void onActiveScreen(Consumer<Screen> action) {
         this.onActiveScreen(action, () -> {});
     }
@@ -315,6 +393,7 @@ public final class Application {
      * @param absent A {@link Runnable} to perform an action, if there are no
      * {@link Screen}s.
      */
+    @Deprecated
     private void onActiveScreen(Consumer<Screen> action, Runnable absent) {
         Screen activeScreen = this.getActiveScreen();
         if (null == activeScreen) {
@@ -331,6 +410,7 @@ public final class Application {
      * @return The active {@link Screen} of this {@link Application} or null if it has
      * no {@link Screen}s.
      */
+    @Deprecated
     private Screen getActiveScreen() {
         return this.SCREENS.peek();
     }

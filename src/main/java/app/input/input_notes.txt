@@ -1,0 +1,55 @@
+------------ Button event ------------
+1. Independent consumables entities.
+2. Those entities encapsulate a desired event, e.g. if on(Ctrl) && on(A)
+   occurred or if on(J) + off(I) + on(C) occurred.
+3. The memory of those entities is limited. That is, when the desired state is
+   reached, there is no need to keep tracking events. Also, more optimizations
+   can be made, in the sense that old tracked state in the timeline can be
+   discarded safely, if proven unnecessary.
+4. Copies of those entities can exist simultaneously, without necessary having
+   the same state.
+5. Those entities are unstable. That is, when queried and achieved, they reset
+   their memory.
+6. The user can only control the memory of those entities when querying
+   successfully their state or demanding a memory reset.
+7. A memory reset of an entity clears its memory completely.
+8. The user has no control over the recording state of those entities. They keep
+   track of all events at any time.
+9. Those entities are immutable on the event they track. That is, an entity that
+   tracks the on(X) && off(V) event, will keep tracking that event throughout
+   its lifetime.
+10. Buttons need not to be modeled as classes. Enums are sufficient for them.
+11. The user can query if an entity is true at query time, without mutating its
+    state. That is different from (5), as (5) signals if the entity went true
+    at least once between the query time and the past (after reset).
+12. The user can query how much time (max) the event was true. (destructive)
+13. An entity will not be re-activated after a destructive query or reset, even
+    if its event is on, unless every single button of that event has been reset.
+    These entities are state-transition mandatory.
+
+------------ Other info ------------
+1. Not all named button exist in every system. A mechanism to query if a named
+   button exists must be in place.
+2. A mechanism to retrieve an unknown button, based on the next button press
+   must be in place. That button could be a known one (named button) or a button
+   that is not named but exists on the current system.
+3. Buttons can't be enums, as they are possibly not all pre-known (key_id vs
+   scancode). So they have to be modeled in a class or record. Their only state
+   is their key_id and scancode, which are final.
+4. An enum that encapsulates known buttons (named) could be possible or they can
+   be public static final fields.
+5. Every key_id (named button) may or may not have a corresponding scancode, and
+   every scancode may or may not have a corresponding key_id.
+6. There might be a benefit in having a user-invisible mechanism that maps
+   key_id to scancode and the other way around (when such a mapping is
+   exists).
+7. There might be a benefit in having a user-invisible mechanism that maps
+   key_id to Buttons (the other way around is possible as all buttons contain
+   their key_id if it exists).
+8. There might be a benefit in having a user-invisible mechanism that maps
+   scancode to Buttons (the other way around is possible as all buttons contain
+   their scancode if it exists).
+9. It is not clear if every Button instance must be a button that exists in the
+   current system or not. If the former, that would imply that every Button has
+   a scancode. Also, Button instances can no longer be predefined and as public
+   static final fields.

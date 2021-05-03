@@ -10,9 +10,9 @@ import java.util.Objects;
 public class Rectangle implements Spatial {
 
     /**
-     * An immutable {@link Rectangle}, i.e. its position or size can't change.
+     * An immutable {@link Rectangle}, i.e. its position and size can't change.
      */
-    public static class Immutable extends Rectangle {
+    private static class Immutable extends Rectangle {
 
         public Immutable() {
             super();
@@ -57,6 +57,15 @@ public class Rectangle implements Spatial {
      * The height of this Rectangle.
      */
     private double height;
+
+    public static Rectangle of(double x, double y, double width, double
+            height) {
+        return new Rectangle.Immutable(x, y, width, height);
+    }
+
+    public static Rectangle immutable(Rectangle r) {
+        return new Rectangle.Immutable(r);
+    }
 
     /**
      * Computes the intersection Rectangle between 2 given Rectangle's'.

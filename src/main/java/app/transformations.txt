@@ -1,0 +1,5 @@
+1. Transform to [-1.0, 1.0] from canvas native. (canvas native -> [-1.0, 1.0])
+2. Transform to canvas native from camera. (camera -> canvas native)
+3. Transform to camera from virtual world. (virtual world -> camera)
+
+virtual world -> camera -> canvas native -> [-1.0, 1.0]

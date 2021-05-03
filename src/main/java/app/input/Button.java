@@ -2,6 +2,7 @@ package app.input;
 
 public abstract sealed class Button permits Keyboard.Button, Mouse.Button {
 
+    @Deprecated
     static record Snapshot(Button button, boolean pressed) {}
 
     protected final int ID;

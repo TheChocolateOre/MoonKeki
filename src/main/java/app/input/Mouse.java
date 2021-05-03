@@ -59,7 +59,7 @@ public final class Mouse {
 
     private static final ReadWriteLock BUTTON_EVENTS_LOCK =
             new ReentrantReadWriteLock(true);
-    private static final Map<Mouse.Button, Set<ButtonEvent>> BUTTON_EVENTS =
+    private static final Map<Mouse.Button, Set<ButtonEventOld>> BUTTON_EVENTS =
             new HashMap<>();
 
     private static final Queue<ButtonSeeker> pressedButtonSeekers =
@@ -115,7 +115,7 @@ public final class Mouse {
         return buttonSeeker;
     }
 
-    static void addButtonEvent(Mouse.Button button, ButtonEvent event) {
+    static void addButtonEvent(Mouse.Button button, ButtonEventOld event) {
         Mouse.BUTTON_EVENTS_LOCK.writeLock().lock();
         try {
             Mouse.BUTTON_EVENTS.computeIfAbsent(button, k ->
@@ -125,7 +125,7 @@ public final class Mouse {
         }//end try
     }
 
-    static void removeButtonEvent(Mouse.Button button, ButtonEvent event) {
+    static void removeButtonEvent(Mouse.Button button, ButtonEventOld event) {
         Mouse.BUTTON_EVENTS_LOCK.writeLock().lock();
         try {
             Mouse.BUTTON_EVENTS.getOrDefault(button, Collections.emptySet())

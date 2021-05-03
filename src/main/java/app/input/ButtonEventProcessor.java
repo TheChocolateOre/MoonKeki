@@ -1,8 +1,9 @@
 package app.input;
 
+@Deprecated
 public class ButtonEventProcessor implements AutoCloseable {
 
-    private final ButtonEvent BUTTON_EVENT;
+    private final ButtonEventOld BUTTON_EVENT;
     private final Runnable ACTION;
 
     public static ButtonEventProcessor ofButtonPress(Keyboard.Key key,
@@ -13,7 +14,7 @@ public class ButtonEventProcessor implements AutoCloseable {
 
     public static ButtonEventProcessor ofButtonPress(Button button,
                                                      Runnable action) {
-        return new ButtonEventProcessor(ButtonEvent.of(button, true),
+        return new ButtonEventProcessor(ButtonEventOld.of(button, true),
                 action);
     }
 
@@ -25,11 +26,11 @@ public class ButtonEventProcessor implements AutoCloseable {
 
     public static ButtonEventProcessor ofButtonRelease(Button button,
                                                        Runnable action) {
-        return new ButtonEventProcessor(ButtonEvent.of(button, false),
+        return new ButtonEventProcessor(ButtonEventOld.of(button, false),
                 action);
     }
 
-    private ButtonEventProcessor(ButtonEvent buttonEvent, Runnable action) {
+    private ButtonEventProcessor(ButtonEventOld buttonEvent, Runnable action) {
         this.BUTTON_EVENT =  buttonEvent;
         this.ACTION = action;
     }

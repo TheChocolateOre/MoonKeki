@@ -1,5 +1,6 @@
 package app.input;
 
+import app.Event;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.*;
@@ -274,7 +275,7 @@ public final class Keyboard {
         }
     }//end nested enum Key
 
-    static final class Button extends app.input.Button {
+    public static final class Button extends app.input.Button {
         private final int SCANCODE;
 
         private final ReadWriteLock STATE_LOCK = new ReentrantReadWriteLock(
@@ -347,9 +348,13 @@ public final class Keyboard {
     private static final Map<Integer, Keyboard.Button> SCANCODE_TO_BUTTON =
             new ConcurrentHashMap<>();
 
-    private static final ReadWriteLock BUTTON_EVENTS_LOCK =
+    private static final ReadWriteLock PRESSED_EVENTS_LOCK =
             new ReentrantReadWriteLock(true);
-    private static final Map<Keyboard.Button, Set<ButtonEvent>> BUTTON_EVENTS =
+    private static final ReadWriteLock RELEASED_EVENTS_LOCK =
+            new ReentrantReadWriteLock(true);
+    private static final Map<Keyboard.Button, Set<Event>> PRESSED_EVENTS =
+            new HashMap<>();
+    private static final Map<Keyboard.Button, Set<Event>> RELEASED_EVENTS =
             new HashMap<>();
 
     private static final Queue<ButtonSeeker> pressedButtonSeekers =
@@ -389,18 +394,83 @@ public final class Keyboard {
                 buttonSeeker.putIfAbsent(BUTTON);
             }//end if
 
-            //We process the ButtonEvent's'
-            var buttonSnapshot = new Button.Snapshot(BUTTON, PRESSED);
-            Keyboard.BUTTON_EVENTS_LOCK.readLock().lock();
+            //We process the Event's'
+            final ReadWriteLock LOCK;
+            final Collection<Event> EVENTS;
+            final ReadWriteLock OTHER_LOCK;
+            final Collection<Event> OTHER_EVENTS;
+            if (PRESSED) {
+                LOCK = Keyboard.PRESSED_EVENTS_LOCK;
+                EVENTS = Keyboard.PRESSED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+                OTHER_LOCK = Keyboard.RELEASED_EVENTS_LOCK;
+                OTHER_EVENTS = Keyboard.RELEASED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+            } else {
+                LOCK = Keyboard.RELEASED_EVENTS_LOCK;
+                EVENTS = Keyboard.RELEASED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+                OTHER_LOCK = Keyboard.PRESSED_EVENTS_LOCK;
+                OTHER_EVENTS = Keyboard.PRESSED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+            }//end if
+
+            LOCK.readLock().lock();
             try {
-                Keyboard.BUTTON_EVENTS.getOrDefault(BUTTON,
-                        Collections.emptySet()).forEach(e -> e.update(
-                        buttonSnapshot));
+                EVENTS.forEach(Event::start);
             } finally {
-                Keyboard.BUTTON_EVENTS_LOCK.readLock().unlock();
+                LOCK.readLock().unlock();
+            }//end try
+
+            OTHER_LOCK.readLock().lock();
+            try {
+                OTHER_EVENTS.forEach(Event::stop);
+            } finally {
+                OTHER_LOCK.readLock().unlock();
             }//end try
         });
     }//end static initializer
+
+    public static Event.Consumer buttonEvent(Keyboard.Key key,
+                                             boolean pressed) {
+        return Keyboard.buttonEvent(key.asButton().orElseThrow(), pressed);
+    }
+
+    public static Event.Consumer buttonEvent(Keyboard.Button button,
+                                             boolean pressed) {
+        final ReadWriteLock LOCK;
+        final Map<Keyboard.Button, Set<Event>> EVENTS;
+        if (pressed) {
+            LOCK = Keyboard.PRESSED_EVENTS_LOCK;
+            EVENTS = Keyboard.PRESSED_EVENTS;
+        } else {
+            LOCK = Keyboard.RELEASED_EVENTS_LOCK;
+            EVENTS = Keyboard.RELEASED_EVENTS;
+        }//end if
+        final Event EVENT = new Event(button.isPressed() == pressed) {
+            @Override
+            public void close() {
+                super.close();
+                LOCK.writeLock().lock();
+                try {
+                    EVENTS.getOrDefault(button, Collections.emptySet())
+                          .remove(this);
+                } finally {
+                    LOCK.writeLock().unlock();
+                }//end try
+            }
+        };
+
+        LOCK.writeLock().lock();
+        try {
+            EVENTS.computeIfAbsent(button, k -> new LinkedHashSet<>())
+                  .add(EVENT);
+        } finally {
+            LOCK.writeLock().unlock();
+        }//end try
+
+        return EVENT.asConsumer();
+    }
 
     public static ButtonSeeker seekNextButton(final boolean pressed) {
         ButtonSeeker buttonSeeker = new ButtonSeeker();
@@ -411,26 +481,6 @@ public final class Keyboard {
         }//end if
 
         return buttonSeeker;
-    }
-
-    static void addButtonEvent(Keyboard.Button button, ButtonEvent event) {
-        Keyboard.BUTTON_EVENTS_LOCK.writeLock().lock();
-        try {
-            Keyboard.BUTTON_EVENTS.computeIfAbsent(button, k ->
-                    new LinkedHashSet<>()).add(event);
-        } finally {
-            Keyboard.BUTTON_EVENTS_LOCK.writeLock().unlock();
-        }//end try
-    }
-
-    static void removeButtonEvent(Keyboard.Button button, ButtonEvent event) {
-        Keyboard.BUTTON_EVENTS_LOCK.writeLock().lock();
-        try {
-            Keyboard.BUTTON_EVENTS.getOrDefault(button, Collections.emptySet())
-                                  .remove(event);
-        } finally {
-            Keyboard.BUTTON_EVENTS_LOCK.writeLock().unlock();
-        }//end try
     }
 
     //trust-based, no argument validation

@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
-        AutoCloseable {
+        Application.Core, AutoCloseable {
 
     public static abstract class Camera extends Rectangle {
         public static class Simple extends Screen.Camera {
@@ -45,8 +45,8 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
                 super(x, y, width, height);
 
                 if (maxTrailSize < 1) {
-                    throw new IllegalArgumentException("Argument maxTrailSize " +
-                            "must be >= 1.");
+                    throw new IllegalArgumentException("Argument " +
+                            "maxTrailSize must be >= 1.");
                 }//end if
 
                 Queue<Rectangle> trail = new ArrayDeque<>(maxTrailSize);
@@ -54,13 +54,13 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
 
                 this.trail = trail;
                 this.weights = IntStream.range(0, maxTrailSize)
-                        .mapToDouble(weightFunction)
-                        .boxed()
-                        .collect(Collectors.toList());
+                                        .mapToDouble(weightFunction)
+                                        .boxed()
+                                        .collect(Collectors.toList());
                 this.weightFunction = weightFunction;
                 this.weightSum = this.weights.stream()
-                        .mapToDouble(w -> w)
-                        .sum();
+                                             .mapToDouble(w -> w)
+                                             .sum();
                 this.maxTrailSize = maxTrailSize;
             }
 
@@ -95,9 +95,8 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
                     height += WEIGHT * RECTANGLE.getHeight();
                 }//end while
 
-                return new Rectangle.Immutable(x / this.weightSum, y /
-                        this.weightSum, width / this.weightSum, height /
-                        this.weightSum);
+                return Rectangle.of(x / this.weightSum, y / this.weightSum,
+                        width / this.weightSum, height / this.weightSum);
             }
         }//end static nested class Trail
 
@@ -119,7 +118,7 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
     /**
      * Indicates if this {@link Screen} is paused. True if this {@link Screen}
      * is paused, otherwise false. A paused {@link Screen} does not update its
-     * state, but can be drawn. Therefore calling {@link #update(Application)}
+     * state, but can be drawn. Therefore calling {@link #update(double)}
      * on a paused {@link Screen}, will have no effect.
      */
     private boolean paused = true;
@@ -160,17 +159,16 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
     /**
      * Updates the state of this {@link Screen}, if it is not paused and after
      * that draws it.
-     * @param app
      */
-    public final void render(Application app) {
-        this.update(app);
+    public final void render(double dt) {
+        this.update(dt);
         this.RENDERER.setCanvas(this);
         this.RENDERER.setTransform(this.getTransform());
         this.draw(this.RENDERER);
     }
 
     /**
-     * Pauses this {@link Screen}. Calling {@link #update(Application)} on a
+     * Pauses this {@link Screen}. Calling {@link #update(double)} on a
      * paused {@link Screen} will have no effect.
      */
     public final void pause() {
@@ -199,6 +197,7 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
         }//end if
 
         this.RENDERER.close();
+        this.closed = true;
     }
 
     protected Camera getCamera() {
@@ -266,19 +265,18 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
         Camera camera = this.getCamera();
         AffineTransform transform = AffineTransform.getScaleInstance(
                 this.getWidth() / camera.getWidth(), this.getHeight() /
-                        camera.getHeight());
+                camera.getHeight());
         transform.translate(-camera.getX(), -camera.getY());
         return transform;
     }
 
     /**
      * Updates the state of this {@link Screen}, if it is not paused.
-     * @param app
      */
-    private void update(Application app) {
+    private void update(double dt) {
         this.ensureOpen();
         if (!this.paused) {
-            this.onUpdate(app);
+            this.onUpdate(dt);
         }//end if
     }
 
@@ -288,13 +286,13 @@ public abstract class Screen extends Canvas.ScreenRegion implements Drawable,
         }//end if
     }
 
+    @Deprecated
     public abstract void onWindowResize(int windowWidth, int windowHeight);
 
     /**
      * Actions to be performed, when this {@link Screen} is updated.
-     * @param app
      */
-    protected abstract void onUpdate(Application app);
+    protected abstract void onUpdate(double dt);
 
     /**
      * Actions to be performed, when this {@link Screen} is paused.

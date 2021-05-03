@@ -8,7 +8,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-public class ButtonEvent implements AutoCloseable {
+@Deprecated
+public class ButtonEventOld implements AutoCloseable {
 
     public static final class Builder {
         private final Set<Button.Snapshot> BUTTON_SNAPSHOTS = new HashSet<>();
@@ -34,12 +35,12 @@ public class ButtonEvent implements AutoCloseable {
             return this;
         }
 
-        public ButtonEvent build() {
-            ButtonEvent event = new ButtonEvent(this.BUTTON_SNAPSHOTS);
+        public ButtonEventOld build() {
+            ButtonEventOld event = new ButtonEventOld(this.BUTTON_SNAPSHOTS);
             for (Button b : this.BUTTONS) {
                 //TODO Pattern Matching for switch refactor candidate (16)
                 if (b instanceof Keyboard.Button kb) {
-                    Keyboard.addButtonEvent(kb, event);
+                    //Keyboard.addButtonEvent(kb, event);
                 } else if (b instanceof Mouse.Button mb) {
                     Mouse.addButtonEvent(mb, event);
                 }//end if
@@ -62,17 +63,17 @@ public class ButtonEvent implements AutoCloseable {
         return new Builder();
     }
 
-    public static ButtonEvent of(Keyboard.Key key, boolean pressed) {
-        return ButtonEvent.of(key.asButton().orElseThrow(), pressed);
+    public static ButtonEventOld of(Keyboard.Key key, boolean pressed) {
+        return ButtonEventOld.of(key.asButton().orElseThrow(), pressed);
     }
 
-    public static ButtonEvent of(Button button, boolean pressed) {
-        return ButtonEvent.builder()
+    public static ButtonEventOld of(Button button, boolean pressed) {
+        return ButtonEventOld.builder()
                           .add(button, pressed)
                           .build();
     }
 
-    private ButtonEvent(Set<Button.Snapshot> buttonSnapshots) {
+    private ButtonEventOld(Set<Button.Snapshot> buttonSnapshots) {
         this.DESIRED_SNAPSHOTS = Set.of(buttonSnapshots.toArray(
                 new Button.Snapshot[0]));
         this.TRACKED_BUTTONS = Set.of(buttonSnapshots.stream()
@@ -188,7 +189,7 @@ public class ButtonEvent implements AutoCloseable {
         for (Button b : this.TRACKED_BUTTONS) {
             //TODO Pattern Matching for switch refactor candidate (16)
             if (b instanceof Keyboard.Button kb) {
-                Keyboard.removeButtonEvent(kb, this);
+                //Keyboard.removeButtonEvent(kb, this);
             } else if (b instanceof Mouse.Button mb) {
                 Mouse.removeButtonEvent(mb, this);
             }//end if
