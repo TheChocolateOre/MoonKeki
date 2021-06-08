@@ -61,9 +61,9 @@ public final class Mouse {
             new ReentrantReadWriteLock(true);
     private static final ReadWriteLock RELEASED_EVENTS_LOCK =
             new ReentrantReadWriteLock(true);
-    private static final Map<Keyboard.Button, Set<Event>> PRESSED_EVENTS =
+    private static final Map<Mouse.Button, Set<Event>> PRESSED_EVENTS =
             new HashMap<>();
-    private static final Map<Keyboard.Button, Set<Event>> RELEASED_EVENTS =
+    private static final Map<Mouse.Button, Set<Event>> RELEASED_EVENTS =
             new HashMap<>();
 
     private static final Queue<ButtonSeeker> pressedButtonSeekers =
@@ -104,6 +104,41 @@ public final class Mouse {
                                    .forEach(e -> e.update(buttonSnapshot));
             } finally {
                 Mouse.BUTTON_EVENTS_LOCK.readLock().unlock();
+            }//end try
+            
+            //We process the Event's'
+            final ReadWriteLock LOCK;
+            final Collection<Event> EVENTS;
+            final ReadWriteLock OTHER_LOCK;
+            final Collection<Event> OTHER_EVENTS;
+            if (PRESSED) {
+                LOCK = Mouse.PRESSED_EVENTS_LOCK;
+                EVENTS = Mouse.PRESSED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+                OTHER_LOCK = Mouse.RELEASED_EVENTS_LOCK;
+                OTHER_EVENTS = Mouse.RELEASED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+            } else {
+                LOCK = Mouse.RELEASED_EVENTS_LOCK;
+                EVENTS = Mouse.RELEASED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+                OTHER_LOCK = Mouse.PRESSED_EVENTS_LOCK;
+                OTHER_EVENTS = Mouse.PRESSED_EVENTS.getOrDefault(BUTTON,
+                        Collections.emptySet());
+            }//end if
+
+            LOCK.readLock().lock();
+            try {
+                EVENTS.forEach(Event::start);
+            } finally {
+                LOCK.readLock().unlock();
+            }//end try
+
+            OTHER_LOCK.readLock().lock();
+            try {
+                OTHER_EVENTS.forEach(Event::stop);
+            } finally {
+                OTHER_LOCK.readLock().unlock();
             }//end try
         });
     }//end static initializer
