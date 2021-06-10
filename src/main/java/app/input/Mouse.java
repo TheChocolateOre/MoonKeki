@@ -251,6 +251,23 @@ public final class Mouse {
     private static Mouse.Button getButton(int id) {
         return Mouse.ID_TO_BUTTON.computeIfAbsent(id, Button::new);
     }
+    
+    //screen coordinates -> framebuffer
+    private static AffineTransform getTransform() {
+        int[] winWidthCache = new int[1];
+        int[] winHeightCache = new int[1];
+        int[] fbWidthCache = new int[1];
+        int[] fbHeightCache = new int[1];
+        GLFW.glfwGetWindowSize(GLFW.glfwGetCurrentContext(), winWidthCache, winHeightCache);
+        GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(), fbWidthCache, fbHeightCache);
+        
+        AffineTransform transform = AffineTransform.getScaleInstance((double) fbWidthCache[0] / 
+                winWidthCache[0], (double) fbHeightCache[0] / winHeightCache[0]);
+        transform.translate(0, winHeightCache[0]);
+        transform.scale(1.0, -1.0);
+        
+        return transform;
+    }
 
     private Mouse() {
         throw new UnsupportedOperationException("You shall not pass");
