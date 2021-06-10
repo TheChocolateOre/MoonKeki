@@ -205,8 +205,15 @@ public final class Mouse {
     
     public static Event.Consumer positionEvent(BiPredicate<Double, Double> 
                                                hoverPredicate) {
-        final Event POSITION_EVENT = new PositionEvent(button.isPressed() == pressed,
-                                                       hoverPredicate) {
+        final AffineTransform TRANSFORM = Mouse.getTransform();
+        final BiPredicate<Double, Double> TRASNFORMED_PREDICATE = (x, y) -> {
+            Point2D p = new Point2D.Double();
+            TRANSFORM.transform(new Point2D.Double(x, y), p);
+            return hoverPredicate.test(p.getX(), p.getY());
+        };
+        Mouse.Position mousePosition = Mouse.getMousePosition();
+        final Event POSITION_EVENT = new PositionEvent(TRASNFORMED_PREDICATE.test(
+                mousePosition.x, mousePosition.y), TRASNFORMED_PREDICATE) {
             @Override
             public void close() {
                 super.close();
