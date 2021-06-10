@@ -64,6 +64,8 @@ public final class Mouse {
         }
         
     }//end static nested class PositionEvent
+    
+    public record Position(double x, double y) {}
 
     //id -> button (only for non-named buttons, if exist)
     private static final Map<Integer, Mouse.Button> ID_TO_BUTTON =
@@ -225,6 +227,13 @@ public final class Mouse {
         }//end try
 
         return EVENT.asConsumer();
+    }
+    
+    public static Mouse.Position getMousePosition() {
+        final double[] xCache = new double[1];
+        final double[] yCache = new double[1];
+        GLFW.glfwGetCursorPos(GLFW.glfwGetCurrentContext(), xCache, yCache);
+        return new Mouse.Position(xCache[0], yCache[0]);
     }
 
     public static ButtonSeeker seekNextButton(final boolean pressed) {
