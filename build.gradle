@@ -6,7 +6,7 @@ plugins {
 group 'com.github.thechocolateore'
 version '0.1.0-SNAPSHOT'
 
-project.ext.lwjglVersion = "3.2.3"
+project.ext.lwjglVersion = "3.3.1"
 project.ext.lwjglNatives = "natives-windows"
 
 repositories {
