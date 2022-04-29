@@ -312,7 +312,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
 
     @Override
     public String toString() {
-        return "Texture: %d {width: %d, height: %d}".formatted(this.getId(),
+        return "Texture:%d[width=%d, height=%d]".formatted(this.getId(),
                 this.getWidth(), this.getHeight());
     }
 
