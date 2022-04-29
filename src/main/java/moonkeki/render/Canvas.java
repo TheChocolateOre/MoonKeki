@@ -10,7 +10,8 @@ import java.awt.*;
  * (texels). Its characteristics are:
  * <ol>
  *     <li>Size (width, height) in texels.</li>
- *     <li>Origin, located at the bottom left corner.</li>
+ *     <li>Origin, located at the bottom left corner, with the y-axis (rows)
+ *         pointing upwards and x-axis (columns) rightwards.</li>
  * </ol>
  *
  * <p>{@snippet :
