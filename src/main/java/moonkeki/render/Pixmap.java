@@ -217,7 +217,6 @@ public abstract class Pixmap extends Canvas {
      */
     @Override
     public boolean equals(Object obj) {
-        this.ensureOpen();
         if (this == obj) {
             return true;
         }
