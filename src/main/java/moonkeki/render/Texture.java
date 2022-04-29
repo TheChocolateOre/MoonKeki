@@ -77,16 +77,16 @@ public final class Texture extends Pixmap implements AutoCloseable {
                     "positive.");
         }//end if
 
-        final int BUFFER_SIZE = Math.multiplyExact(Math.multiplyExact(width,
-                height), Integer.BYTES);
+        final int BUFFER_SIZE = Math.multiplyExact(
+                Math.multiplyExact(width, height), Integer.BYTES);
         ByteBuffer data = MemoryUtil.memAlloc(BUFFER_SIZE);
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
                 final int TEXEL = texels.applyAsInt(i, j);
                 data.put((byte) (TEXEL >> 16 & 0xFF))  //Red
-                        .put((byte) (TEXEL >> 8 & 0xFF))   //Green
-                        .put((byte) (TEXEL & 0xFF))        //Blue
-                        .put((byte) (TEXEL >> 24 & 0xFF)); //Alpha
+                    .put((byte) (TEXEL >> 8 & 0xFF))   //Green
+                    .put((byte) (TEXEL & 0xFF))        //Blue
+                    .put((byte) (TEXEL >> 24 & 0xFF)); //Alpha
             }//end for
         }//end for
         data.flip();
@@ -116,16 +116,16 @@ public final class Texture extends Pixmap implements AutoCloseable {
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, TEXTURE_ID);
 
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S,
-                GL13C.GL_CLAMP_TO_BORDER);
+                             GL13C.GL_CLAMP_TO_BORDER);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T,
-                GL13C.GL_CLAMP_TO_BORDER);
+                             GL13C.GL_CLAMP_TO_BORDER);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER,
-                GL13C.GL_NEAREST);
+                             GL13C.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER,
-                GL13C.GL_NEAREST);
+                             GL13C.GL_NEAREST);
 
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width,
-                height, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, data);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, width, height, 0,
+                          GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, data);
         MemoryUtil.memFree(data);
         Texture.unbind();
 
@@ -153,8 +153,8 @@ public final class Texture extends Pixmap implements AutoCloseable {
      * is the default configuration of a {@link BufferedImage}.
      */
     public Texture(BufferedImage image) {
-        this(image.getWidth(), image.getHeight(), Texture.asIntBinaryOperator(
-                image));
+        this(image.getWidth(), image.getHeight(),
+             Texture.asIntBinaryOperator(image));
     }
 
     public Texture(final int width, final int height) {
@@ -185,7 +185,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
      * Integer.MAX_VALUE}.
      */
     public Texture(final int width, final int height, IntBinaryOperator
-            texels) {
+                   texels) {
         this(width, height, Texture.toByteBuffer(width, height, texels));
     }
 
@@ -201,12 +201,14 @@ public final class Texture extends Pixmap implements AutoCloseable {
 
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, FRAMEBUFFER_ID);
         GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER,
-                GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, other.getId(),
-                0);
+                                    GL30.GL_COLOR_ATTACHMENT0,
+                                    GL11.GL_TEXTURE_2D,
+                                    other.getId(),
+                                    0);
 
         TEXTURE.bind();
         GL20.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0,
-                TEXTURE.getWidth(), TEXTURE.getHeight());
+                                 TEXTURE.getWidth(), TEXTURE.getHeight());
         GL30.glDeleteFramebuffers(FRAMEBUFFER_ID);
 
         this.ID = TEXTURE.ID;
@@ -242,8 +244,7 @@ public final class Texture extends Pixmap implements AutoCloseable {
         final int WIDTH = this.getWidth();
         final int HEIGHT = this.getHeight();
 
-        final int SIZE = Math.multiplyExact(Math.multiplyExact(WIDTH, HEIGHT),
-                                            1);
+        final int SIZE = Math.multiplyExact(WIDTH, HEIGHT);
         final int[] DATA = new int[SIZE];
         this.bind();
         GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA,
@@ -263,7 +264,8 @@ public final class Texture extends Pixmap implements AutoCloseable {
         BufferedImage bufferedImage = new BufferedImage(WIDTH, HEIGHT,
                 BufferedImage.TYPE_INT_ARGB);
         bufferedImage.setRGB(0, 0, bufferedImage.getWidth(),
-                bufferedImage.getHeight(), DATA, 0, this.getWidth());
+                             bufferedImage.getHeight(), DATA, 0,
+                             this.getWidth());
 
         return bufferedImage;
     }
