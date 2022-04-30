@@ -22,18 +22,18 @@ think you could go for other styles too.
 ### How it looks like?
 - Drawing on the screen:
   ```java
-    Texture image = new Texture("path.."); //We load an image from disk
-    InstantRenderer r = InstantRenderer.getDefault();
-    r.drawCommand()
-     .ofPixmap(image)
-     .draw(); //We're done
+  Texture image = new Texture("path.."); //We load an image from disk
+  InstantRenderer r = InstantRenderer.getDefault();
+  r.drawCommand()
+   .ofPixmap(image)
+   .draw(); //We're done
   ```
 - Drawing on a texture:
   ```java
-    Texture canvas = ..
-    InstantRenderer r = InstantRenderer.builder()
-                                       .ofCanvas(canvas)
-                                       .build();
+  Texture canvas = ..
+  InstantRenderer r = InstantRenderer.builder()
+                                     .ofCanvas(canvas)
+                                     .build();
   ```
 - Drawing a portion of a texture:
    ```java
