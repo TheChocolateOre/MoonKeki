@@ -195,6 +195,15 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    //returns a new BatchRenderer
+    public static BatchRenderer getDefault() {
+        return BatchRenderer.builder().build();
+    }
+
     private static final int VERTICES_PER_QUAD = 6;
     private static final int FLOATS_PER_QUAD = 4 *
             BatchRenderer.VERTICES_PER_QUAD;
@@ -210,10 +219,6 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
     private final int BUFFER_OBJECT_ID;
     private Texture currentTexture; //Can be null
     private boolean closed;
-
-    public static Builder builder() {
-        return new Builder();
-    }
 
     private BatchRenderer(Builder builder) {
         if (builder.shortLived) {

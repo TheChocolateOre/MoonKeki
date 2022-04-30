@@ -87,11 +87,11 @@ public final class ShaderRenderer extends Renderer implements AutoCloseable {
 
         private ShaderCommand() {}
 
-        public ShaderCommand addShader(ShaderProgram shaderProgram) {
-            return this.addShader(shaderProgram, 1);
+        public ShaderCommand add(ShaderProgram shaderProgram) {
+            return this.add(shaderProgram, 1);
         }
 
-        public ShaderCommand addShader(ShaderProgram shaderProgram, int count) {
+        public ShaderCommand add(ShaderProgram shaderProgram, int count) {
             if (0 == count) {
                 return this;
             }
@@ -144,6 +144,10 @@ public final class ShaderRenderer extends Renderer implements AutoCloseable {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public static ShaderRenderer getDefault() {
+        return ShaderRenderer.builder().build();
     }
 
     private final Map<TextureSize, List<Texture>> POST_TEXTURES =

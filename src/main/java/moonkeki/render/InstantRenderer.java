@@ -173,11 +173,15 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    private final BatchRenderer BATCH_RENDERER;
-
     public static Builder builder() {
         return new Builder();
     }
+
+    public static InstantRenderer getDefault() {
+        return InstantRenderer.builder().build();
+    }
+
+    private final BatchRenderer BATCH_RENDERER;
 
     private InstantRenderer(BatchRenderer batchRenderer) {
         this.BATCH_RENDERER = batchRenderer;
