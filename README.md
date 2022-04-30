@@ -191,7 +191,7 @@ Application.configuration()
            .setWindowPosition(...)
            .setWindowSize(...)
            .setWindowTitle(...)
-           .build(...); //You supply the starting Screen here
+           .build(...); //You supply the starting point here
 ```
 Important! Don't use any class unless the .build() in the above code has been
 called! Keep in mind that the `render` package is more mature than the `app`.
