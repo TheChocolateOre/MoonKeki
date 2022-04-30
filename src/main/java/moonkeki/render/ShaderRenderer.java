@@ -158,7 +158,35 @@ public final class ShaderRenderer extends Renderer implements AutoCloseable {
         return new ShaderCommand();
     }
 
-    public void apply(ShaderCommand shaderCommand) {
+    public boolean isClosed() {
+        return this.instantRenderer.isClosed();
+    }
+
+    @Override
+    public void close() {
+        this.instantRenderer.close();
+    }
+
+    @Override
+    public Canvas getCanvas() {
+        return this.instantRenderer.getCanvas();
+    }
+
+    public Rebuilder rebuild() {
+        return new Rebuilder();
+    }
+
+    @Override
+    void setupCanvas() {
+        this.instantRenderer.setupCanvas();
+    }
+
+    @Override
+    void copyCanvasTo(Pixmap destination) {
+        this.instantRenderer.copyCanvasTo(destination);
+    }
+
+    private void apply(ShaderCommand shaderCommand) {
         if (shaderCommand.entries.isEmpty()) {
             return;
         }//end if
@@ -197,34 +225,6 @@ public final class ShaderRenderer extends Renderer implements AutoCloseable {
                             .ofPixmap(POST_TEXTURES.get(
                                     (shaderCommand.size() - 1) % 2))
                             .draw();
-    }
-
-    public boolean isClosed() {
-        return this.instantRenderer.isClosed();
-    }
-
-    @Override
-    public void close() {
-        this.instantRenderer.close();
-    }
-
-    @Override
-    public Canvas getCanvas() {
-        return this.instantRenderer.getCanvas();
-    }
-
-    public Rebuilder rebuild() {
-        return new Rebuilder();
-    }
-
-    @Override
-    void setupCanvas() {
-        this.instantRenderer.setupCanvas();
-    }
-
-    @Override
-    void copyCanvasTo(Pixmap destination) {
-        this.instantRenderer.copyCanvasTo(destination);
     }
 
     private List<Texture> getPostTextures(int count) {

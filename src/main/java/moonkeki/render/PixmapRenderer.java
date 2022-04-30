@@ -2,6 +2,8 @@ package moonkeki.render;
 
 import java.awt.geom.AffineTransform;
 
+//TODO Add drawCommand() method
+//TODO Remove the generic argument from DrawCommand's'
 public abstract class PixmapRenderer extends Renderer {
 
     interface Builder<T extends Builder<T>> {
@@ -10,7 +12,23 @@ public abstract class PixmapRenderer extends Renderer {
         T ofTransform(AffineTransform transform);
     }
 
-    public static abstract class DrawCommand<T extends DrawCommand<T>> {
+    public interface DrawCommand {
+        DrawCommand ofPixmap(Pixmap pixmap);
+        DrawCommand atX(double x);
+        DrawCommand atY(double y);
+        DrawCommand atPosition(double x, double y);
+        DrawCommand ofWidth(double width);
+        DrawCommand ofHeight(double height);
+        DrawCommand ofSize(double width, double height);
+        DrawCommand ofMirroredX();
+        DrawCommand ofMirroredY();
+        DrawCommand unmirrorX();
+        DrawCommand unmirrorY();
+        DrawCommand withTransform(AffineTransform transform);
+        void process();
+    }
+
+    public static abstract class AbstractDrawCommand implements DrawCommand {
         Pixmap pixmap;
         double x;
         double y;
@@ -20,9 +38,9 @@ public abstract class PixmapRenderer extends Renderer {
         boolean isMirroredY;
         AffineTransform transform = new AffineTransform();
 
-        DrawCommand() {}
+        AbstractDrawCommand() {}
 
-        public T ofPixmap(Pixmap pixmap) {
+        public DrawCommand ofPixmap(Pixmap pixmap) {
             this.pixmap = pixmap;
             if (null == this.width) {
                 this.width = (double) pixmap.getWidth();
@@ -32,32 +50,32 @@ public abstract class PixmapRenderer extends Renderer {
                 this.height = (double) pixmap.getHeight();
             }
 
-            return this.getThis();
+            return this;
         }
 
-        public T atX(double x) {
+        public DrawCommand atX(double x) {
             return this.atPosition(x, this.y);
         }
 
-        public T atY(double y) {
+        public DrawCommand atY(double y) {
             return this.atPosition(this.x, y);
         }
 
-        public T atPosition(double x, double y) {
+        public DrawCommand atPosition(double x, double y) {
             this.x = x;
             this.y = y;
-            return this.getThis();
+            return this;
         }
 
-        public T ofWidth(double width) {
+        public DrawCommand ofWidth(double width) {
             return this.ofSize(width, this.height);
         }
 
-        public T ofHeight(double height) {
+        public DrawCommand ofHeight(double height) {
             return this.ofSize(this.width, height);
         }
 
-        public T ofSize(double width, double height) {
+        public DrawCommand ofSize(double width, double height) {
             if (width < 0.0) {
                 throw new IllegalArgumentException("Argument width can't " +
                         "be negative.");
@@ -70,47 +88,35 @@ public abstract class PixmapRenderer extends Renderer {
 
             this.width = width;
             this.height = height;
-            return this.getThis();
+            return this;
         }
 
-        public T ofMirroredX() {
+        public DrawCommand ofMirroredX() {
             this.isMirroredX = true;
-            return this.getThis();
+            return this;
         }
 
-        public T ofMirroredY() {
+        public DrawCommand ofMirroredY() {
             this.isMirroredY = true;
-            return this.getThis();
+            return this;
         }
 
-        public T unmirrorX() {
+        public DrawCommand unmirrorX() {
             this.isMirroredX = false;
-            return this.getThis();
+            return this;
         }
 
-        public T unmirrorY() {
+        public DrawCommand unmirrorY() {
             this.isMirroredY = false;
-            return this.getThis();
+            return this;
         }
 
-        public T withTransform(AffineTransform transform) {
+        public DrawCommand withTransform(AffineTransform transform) {
             this.transform = transform;
-            return this.getThis();
+            return this;
         }
-
-        abstract T getThis();
     }
 
-    public static DrawCommand<?> createDrawCommand() {
-        class DrawCmd extends DrawCommand<DrawCmd> {
-            @Override
-            protected DrawCmd getThis() {
-                return this;
-            }
-        }
-        return new DrawCmd();
-    }
-
-    public abstract void process(DrawCommand<?> drawCommand);
+    public abstract DrawCommand drawCommand();
 
 }

@@ -83,16 +83,93 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    public class DrawCommand extends PixmapRenderer.DrawCommand<DrawCommand> {
+    public class DrawCommand implements PixmapRenderer.DrawCommand {
+        private final BatchRenderer.DrawCommand DRAW_COMMAND =
+                InstantRenderer.this.BATCH_RENDERER.drawCommand();
+
         private DrawCommand() {}
 
-        public void draw() {
-            InstantRenderer.this.draw(this);
+        @Override
+        public InstantRenderer.DrawCommand ofPixmap(Pixmap pixmap) {
+            this.DRAW_COMMAND.ofPixmap(pixmap);
+            return this;
         }
 
         @Override
-        DrawCommand getThis() {
+        public InstantRenderer.DrawCommand atX(double x) {
+            this.DRAW_COMMAND.atX(x);
             return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand atY(double y) {
+            this.DRAW_COMMAND.atY(y);
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand atPosition(double x, double y) {
+            this.DRAW_COMMAND.atPosition(x, y);
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand ofWidth(double width) {
+            this.DRAW_COMMAND.ofWidth(width);
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand ofHeight(double height) {
+            this.DRAW_COMMAND.ofHeight(height);
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand ofSize(double width, double height) {
+            this.DRAW_COMMAND.ofSize(width, height);
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand ofMirroredX() {
+            this.DRAW_COMMAND.ofMirroredX();
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand ofMirroredY() {
+            this.DRAW_COMMAND.ofMirroredY();
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand unmirrorX() {
+            this.DRAW_COMMAND.unmirrorX();
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand unmirrorY() {
+            this.DRAW_COMMAND.unmirrorY();
+            return this;
+        }
+
+        @Override
+        public InstantRenderer.DrawCommand withTransform(AffineTransform 
+                                                        transform) {
+            this.DRAW_COMMAND.withTransform(transform);
+            return this;
+        }
+
+        @Override
+        public void process() {
+            this.draw();
+        }
+
+        public void draw() {
+            this.DRAW_COMMAND.queue();
+            InstantRenderer.this.BATCH_RENDERER.flush();
         }
     }
 
@@ -108,16 +185,6 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
 
     public DrawCommand drawCommand() {
         return new DrawCommand();
-    }
-
-    public void draw(PixmapRenderer.DrawCommand<?> drawCommand) {
-        this.BATCH_RENDERER.queue(drawCommand);
-        this.BATCH_RENDERER.flush();
-    }
-
-    @Override
-    public void process(PixmapRenderer.DrawCommand<?> drawCommand) {
-        this.draw(drawCommand);
     }
 
     @Override
