@@ -20,51 +20,51 @@ Pixel art variety. To be fair though, it draws textures and runs shaders, so I
 think you could go for other styles too.
 
 ### How it looks like?
-- Drawing on the screen:
-  ```java
-  Texture image = new Texture("path.."); //We load an image from disk
-  InstantRenderer renderer = InstantRenderer.getDefault();
-  renderer.drawCommand()
-          .ofPixmap(image)
-          .draw(); //We're done
-  ```
-- Drawing on a texture:
-  ```java
-  Texture canvas = ..
-  InstantRenderer r = InstantRenderer.builder()
-                                     .ofCanvas(canvas)
-                                     .build();
-  ```
-- Drawing a portion of a texture:
-   ```java
-   Texture image = ..
-   //A region of image, defined as [x=100, y=200, width=50, height=250]
-   Pixmap region = image.subRegion(100, 200, 50, 250);
-   InstantRenderer renderer = InstantRenderer.getDefault();
-   renderer.drawCommand()
-           .ofPixmap(region) //Only the defined region will be drawn
-           .draw();
-   ```
-- Drawing **on** a portion of a texture:
-   ```java
-   Texture image = ..
-   Pixmap canvas = image.subRegion(200, 100, 250, 50);
-   InstantRenderer r = InstantRenderer.builder()
-                                      .ofCanvas(canvas)
-                                      .build();
-   ```
-- Post-processing effects:
-  ```java
-  ShaderProgram blur = ..
-  ShaderProgram negative = ..
-  ShaderProgram chromatic = ..
-  ShaderRenderer renderer = ShaderRenderer.getDefault();
-  renderer.shaderCommand()
-          .add(blur)
-          .add(negative)
-          .add(chromatic)
-          .apply()
-  ```
+Drawing on the screen:
+```java
+Texture image = new Texture("path.."); //We load an image from disk
+InstantRenderer renderer = InstantRenderer.getDefault();
+renderer.drawCommand()
+        .ofPixmap(image)
+        .draw(); //We're done
+```
+Drawing on a texture:
+```java
+Texture canvas = ..
+InstantRenderer r = InstantRenderer.builder()
+                                   .ofCanvas(canvas)
+                                   .build();
+```
+Drawing a portion of a texture:
+```java
+Texture image = ..
+//A region of image, defined as [x=100, y=200, width=50, height=250]
+Pixmap region = image.subRegion(100, 200, 50, 250);
+InstantRenderer renderer = InstantRenderer.getDefault();
+renderer.drawCommand()
+        .ofPixmap(region) //Only the defined region will be drawn
+        .draw();
+```
+Drawing **on** a portion of a texture:
+```java
+Texture image = ..
+Pixmap canvas = image.subRegion(200, 100, 250, 50);
+InstantRenderer r = InstantRenderer.builder()
+                                   .ofCanvas(canvas)
+                                   .build();
+```
+Post-processing effects:
+```java
+ShaderProgram blur = ..
+ShaderProgram negative = ..
+ShaderProgram chromatic = ..
+ShaderRenderer renderer = ShaderRenderer.getDefault();
+renderer.shaderCommand()
+        .add(blur)
+        .add(negative)
+        .add(chromatic)
+        .apply()
+```
 
 ### Is this cross-platform?
 It is desktop cross-platform. You can't run it on mobile or playstation or xbox
