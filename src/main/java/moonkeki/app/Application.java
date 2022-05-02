@@ -103,6 +103,7 @@ public final class Application {
 
     private long windowId;
     private Core core;
+    private Long prevTimeStamp = null;
 
     private Application(Builder builder) {
         GLFWErrorCallback.createPrint(System.err).set();
@@ -153,11 +154,12 @@ public final class Application {
         this.core = builder.coreSupplier.apply(SIZE.width(), SIZE.height());
         this.windowId = WINDOW_ID;
 
-        GLFW.glfwSetWindowFocusCallback(WINDOW_ID, (windowId, focused) -> {
-            if (focused) {
-                Application.this.core.resume();
-            } else {
+        GLFW.glfwSetWindowIconifyCallback(WINDOW_ID, (windowId, iconified) -> {
+            if (iconified) {
                 Application.this.core.pause();
+                Application.this.prevTimeStamp = null;
+            } else {
+                Application.this.core.resume();
             }
         });
     }
@@ -191,10 +193,7 @@ public final class Application {
             prevWindowHeight = SIZE.height();
         }
 
-        Long prevTimeStamp = null;
         while (loop) {
-            final long START_TIMESTAMP = System.nanoTime();
-
             GL11.glEnable(GL11.GL_BLEND);
             GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
