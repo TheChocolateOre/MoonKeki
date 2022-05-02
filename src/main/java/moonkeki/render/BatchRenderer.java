@@ -122,8 +122,8 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    public class DrawCommand extends PixmapRenderer.AbstractDrawCommand
-                             implements PixmapRenderer.AttachedDrawCommand {
+    public final class DrawCommand extends PixmapRenderer.AbstractDrawCommand
+                                implements PixmapRenderer.AttachedDrawCommand {
         private DrawCommand() {}
 
         @Override

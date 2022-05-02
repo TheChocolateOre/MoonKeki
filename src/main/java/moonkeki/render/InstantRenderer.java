@@ -83,7 +83,8 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    public class DrawCommand implements PixmapRenderer.AttachedDrawCommand {
+    public final class DrawCommand implements
+            PixmapRenderer.AttachedDrawCommand {
         private final BatchRenderer.DrawCommand DRAW_COMMAND =
                 InstantRenderer.this.BATCH_RENDERER.drawCommand();
 

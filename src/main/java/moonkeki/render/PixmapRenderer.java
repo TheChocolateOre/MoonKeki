@@ -2,15 +2,18 @@ package moonkeki.render;
 
 import java.awt.geom.AffineTransform;
 import java.util.Objects;
-import java.util.Optional;
 
-//TODO Add drawCommand() method
-//TODO Remove the generic argument from DrawCommand's'
 public abstract class PixmapRenderer extends Renderer {
 
     public interface DrawCommand {
         static DrawCommand instance() {
             return new AbstractDrawCommand();
+        }
+
+        static DrawCommand unmodifiable(DrawCommand drawCommand) {
+            return drawCommand.getClass() == UnmodifiableDrawCommand.class ?
+                   drawCommand :
+                   new UnmodifiableDrawCommand(drawCommand);
         }
 
         default DrawCommand ofSize(double width, double height) {
@@ -221,6 +224,109 @@ public abstract class PixmapRenderer extends Renderer {
                     this.getWidth(), this.getHeight(),
                     this.isMirroredX, this.isMirroredY,
                     this.transform);
+        }
+    }
+
+    private static final class UnmodifiableDrawCommand implements DrawCommand {
+        final DrawCommand DRAW_COMMAND;
+        
+        private UnmodifiableDrawCommand(DrawCommand drawCommand) {
+            this.DRAW_COMMAND = drawCommand;
+        }
+
+        @Override
+        public DrawCommand ofPixmap(Pixmap pixmap) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand atX(double x) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand atY(double y) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand atPosition(double x, double y) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand ofWidth(double width) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand ofHeight(double height) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand ofMirroredX() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand ofMirroredY() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand unmirrorX() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand unmirrorY() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public DrawCommand withTransform(AffineTransform transform) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Pixmap getPixmap() {
+            return this.DRAW_COMMAND.getPixmap();
+        }
+
+        @Override
+        public double getX() {
+            return this.DRAW_COMMAND.getX();
+        }
+
+        @Override
+        public double getY() {
+            return this.DRAW_COMMAND.getY();
+        }
+
+        @Override
+        public double getWidth() {
+            return this.DRAW_COMMAND.getWidth();
+        }
+
+        @Override
+        public double getHeight() {
+            return this.DRAW_COMMAND.getHeight();
+        }
+
+        @Override
+        public boolean isXMirrored() {
+            return this.DRAW_COMMAND.isXMirrored();
+        }
+
+        @Override
+        public boolean isYMirrored() {
+            return this.DRAW_COMMAND.isYMirrored();
+        }
+
+        @Override
+        public AffineTransform getTransform() {
+            return this.DRAW_COMMAND.getTransform();
         }
     }
 
