@@ -214,12 +214,7 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-
-            return obj instanceof DrawCommand c &&
-                   this.DRAW_COMMAND.equals(c.DRAW_COMMAND);
+            return this == obj || this.DRAW_COMMAND.equals(obj);
         }
 
         @Override

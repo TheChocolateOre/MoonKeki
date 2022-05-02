@@ -328,6 +328,21 @@ public abstract class PixmapRenderer extends Renderer {
         public AffineTransform getTransform() {
             return this.DRAW_COMMAND.getTransform();
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || this.DRAW_COMMAND.equals(obj);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.DRAW_COMMAND.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return this.DRAW_COMMAND.toString();
+        }
     }
 
     public abstract AttachedDrawCommand drawCommand();
