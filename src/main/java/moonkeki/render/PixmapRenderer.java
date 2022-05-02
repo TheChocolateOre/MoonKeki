@@ -142,7 +142,7 @@ public abstract class PixmapRenderer extends Renderer {
         }
 
         public DrawCommand withTransform(AffineTransform transform) {
-            this.transform = transform;
+            this.transform.setTransform(transform);
             return this;
         }
 
