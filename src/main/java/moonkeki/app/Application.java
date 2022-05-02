@@ -22,7 +22,7 @@ import static org.lwjgl.system.MemoryStack.stackPush;
 public final class Application {
 
     public interface Core extends AutoCloseable {
-        void render(double dt);
+        void next(double dt);
         void onWindowResize(int windowWidth, int windowHeight);
         void pause();
         void resume();
@@ -226,7 +226,7 @@ public final class Application {
                         (CURRENT_TIMESTAMP - prevTimeStamp) / 1_000_000_000.0 :
                         0.0;
                 prevTimeStamp = CURRENT_TIMESTAMP;
-                this.core.render(dt);
+                this.core.next(dt);
             }
 
             GLFW.glfwSwapBuffers(this.windowId);
