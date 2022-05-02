@@ -40,10 +40,12 @@ public final class Application {
         }
 
         private String windowTitle = "Untitled";
-        private WindowPositionFunction windowPositionFunction = (mw, mh, ww, wh) ->
-                new Application.Position((mw - ww) / 2, (mh - wh) / 2);
+        private WindowPositionFunction windowPositionFunction =
+                (mw, mh, ww, wh) -> new Application.Position((mw - ww) / 2,
+                                                             (mh - wh) / 2);
         //(monitorWidth, monitorHeight) -> windowSize
-        private BiFunction<Integer, Integer, Size> windowSizeFunction = Size::new;
+        private BiFunction<Integer, Integer, Size> windowSizeFunction =
+                Size::new;
         private BiFunction<Integer, Integer, Core> coreSupplier;
         private boolean windowDecorated = true;
 
@@ -88,12 +90,12 @@ public final class Application {
             if (width < 1) {
                 throw new IllegalArgumentException("The width must be " +
                         "positive.");
-            }//end if
+            }
 
             if (height < 1) {
                 throw new IllegalArgumentException("The height must be " +
                         "positive.");
-            }//end if
+            }
         }
     }
 
@@ -107,7 +109,7 @@ public final class Application {
 
         if (!GLFW.glfwInit()) {
             throw new IllegalStateException("Can't initialize GLFW.");
-        }//end if
+        }
 
         GLFW.glfwDefaultWindowHints();
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE);
@@ -124,7 +126,7 @@ public final class Application {
                 MemoryUtil.NULL);
         if (WINDOW_ID == MemoryUtil.NULL) {
             throw new RuntimeException("Can't create GLFW window.");
-        }//end if
+        }
 
         try (MemoryStack stack = stackPush()) {
             IntBuffer windowWidthBuffer = stack.mallocInt(1);
@@ -137,7 +139,7 @@ public final class Application {
                             windowWidthBuffer.get(0), windowHeightBuffer.get(0));
             GLFW.glfwSetWindowPos(WINDOW_ID, windowPosition.x(),
                     windowPosition.y());
-        }//end try-with-resources
+        }
 
         GLFW.glfwMakeContextCurrent(WINDOW_ID);
         GLFW.glfwSwapInterval(1); //Vsync on
@@ -156,7 +158,7 @@ public final class Application {
                 Application.this.core.resume();
             } else {
                 Application.this.core.pause();
-            }//end if
+            }
         });
     }
 
@@ -188,8 +190,8 @@ public final class Application {
             prevWindowWidth = SIZE.width();
             prevWindowHeight = SIZE.height();
         }
-        double dt = 0.0;
 
+        Long prevTimeStamp = null;
         while (loop) {
             final long START_TIMESTAMP = System.nanoTime();
 
@@ -207,28 +209,32 @@ public final class Application {
             if (WINDOW_WIDTH != prevWindowWidth && WINDOW_WIDTH != 0) {
                 prevWindowWidth = WINDOW_WIDTH;
                 windowSizeChanged = true;
-            }//end if
+            }
 
             if (WINDOW_HEIGHT != prevWindowHeight && WINDOW_HEIGHT != 0) {
                 prevWindowHeight = WINDOW_HEIGHT;
                 windowSizeChanged = true;
-            }//end if
+            }
 
             if (windowSizeChanged) {
                 this.core.onWindowResize(WINDOW_WIDTH, WINDOW_HEIGHT);
-            }//end if
+            }
 
             if (WINDOW_WIDTH != 0 && WINDOW_HEIGHT != 0) {
+                final long CURRENT_TIMESTAMP = System.nanoTime();
+                final double dt = prevTimeStamp != null ?
+                        (CURRENT_TIMESTAMP - prevTimeStamp) / 1_000_000_000.0 :
+                        0.0;
+                prevTimeStamp = CURRENT_TIMESTAMP;
                 this.core.render(dt);
-            }//end if
+            }
 
             GLFW.glfwSwapBuffers(this.windowId);
             GLFW.glfwPollEvents();
 
             loop = !GLFW.glfwWindowShouldClose(this.windowId) &&
-                    !this.core.isClosed();
-            dt = (System.nanoTime() - START_TIMESTAMP) / 1_000_000_000.0;
-        }//end while
+                   !this.core.isClosed();
+        }
     }
 
     private void close() {
@@ -243,9 +249,9 @@ public final class Application {
                 c.close();
             } catch (Exception ignored) {
 
-            }//end try
+            }
             itr.remove();
-        }//end while
+        }
 
         glfwFreeCallbacks(this.windowId);
         glfwDestroyWindow(this.windowId);
