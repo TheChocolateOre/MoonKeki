@@ -122,7 +122,8 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    public class DrawCommand extends PixmapRenderer.AbstractDrawCommand {
+    public class DrawCommand extends PixmapRenderer.AbstractDrawCommand
+                             implements PixmapRenderer.AttachedDrawCommand {
         private DrawCommand() {}
 
         @Override
@@ -274,6 +275,83 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
         return new DrawCommand();
     }
 
+    @Override
+    public void process(PixmapRenderer.DrawCommand drawCommand) {
+        this.queue(drawCommand);
+    }
+
+    public void queue(PixmapRenderer.DrawCommand drawCommand) {
+        this.ensureOpen();
+
+        final Pixmap PIXMAP = drawCommand.getPixmap();
+        if (PIXMAP.isVoid() || 0.0 == drawCommand.getWidth() ||
+                               0.0 == drawCommand.getHeight()) {
+            return;
+        }//end if
+
+        if (this.CANVAS.getBackend().equals(PIXMAP.getBackend())) {
+            throw new IllegalArgumentException("The pixmap of the " +
+                    "DrawCommand is the canvas of this BufferedRenderer.");
+        }//end if
+
+        if (this.isFull() || !PIXMAP.getTexture().equals(this.currentTexture)) {
+            this.flush();
+        }//end if
+
+        final float MIN_U;
+        final float MAX_U;
+        final float MIN_V;
+        final float MAX_V;
+
+        if (drawCommand.isXMirrored()) {
+            MIN_U = PIXMAP.getMaxU();
+            MAX_U = PIXMAP.getMinU();
+        } else {
+            MIN_U = PIXMAP.getMinU();
+            MAX_U = PIXMAP.getMaxU();
+        }//end if
+
+        if (drawCommand.isYMirrored()) {
+            MIN_V = PIXMAP.getMaxV();
+            MAX_V = PIXMAP.getMinV();
+        } else {
+            MIN_V = PIXMAP.getMinV();
+            MAX_V = PIXMAP.getMaxV();
+        }//end if
+
+        final double[] SRC_V = {
+                drawCommand.getX(),                           //bot-left.x
+                drawCommand.getY(),                           //bot-left.y
+                drawCommand.getX(),                           //top-left.x
+                drawCommand.getY() + drawCommand.getHeight(), //top-left.y
+                drawCommand.getX() + drawCommand.getWidth(),  //top-right.x
+                drawCommand.getY() + drawCommand.getHeight(), //top-right.y
+                drawCommand.getX() + drawCommand.getWidth(),  //bot-right.x
+                drawCommand.getY()                            //bot-right.y
+        };
+        final float[] DST_V = new float[SRC_V.length];
+        drawCommand.getTransform().transform(SRC_V, 0, DST_V, 0,
+                DST_V.length / 2);
+
+                     //First triangle
+        this.vertices.put(DST_V[2]).put(DST_V[3]) //top-left.xy
+                     .put(MIN_U).put(MAX_V)       //top-left.uv
+                     .put(DST_V[4]).put(DST_V[5]) //top-right.xy
+                     .put(MAX_U).put(MAX_V)       //top-right.uv
+                     .put(DST_V[0]).put(DST_V[1]) //bot-left.xy
+                     .put(MIN_U).put(MIN_V)       //bot-left.uv
+                     //Second triangle
+                     .put(DST_V[4]).put(DST_V[5]) //top-right.xy
+                     .put(MAX_U).put(MAX_V)       //top-right.uv
+                     .put(DST_V[0]).put(DST_V[1]) //bot-left.xy
+                     .put(MIN_U).put(MIN_V)       //bot-left.uv
+                     .put(DST_V[6]).put(DST_V[7]) //bot-right.xy
+                     .put(MAX_U).put(MIN_V);      //bot-right.uv
+
+        this.currentTexture = PIXMAP.getTexture();
+        ++this.size;
+    }
+
     public void flush() {
         if (this.isEmpty()) {
             return;
@@ -354,77 +432,6 @@ public class BatchRenderer extends PixmapRenderer implements AutoCloseable {
     @Override
     void copyCanvasTo(Pixmap destination) {
         this.getCanvas().copyTo(destination, this.CANVAS_FRAMEBUFFER_ID);
-    }
-
-    private void queue(DrawCommand drawCommand) {
-        this.ensureOpen();
-        if (drawCommand.pixmap.isVoid() || 0.0 == drawCommand.width ||
-                                           0.0 == drawCommand.height) {
-            return;
-        }//end if
-
-        if (this.CANVAS.getBackend().equals(drawCommand.pixmap.getBackend())) {
-            throw new IllegalArgumentException("The pixmap of the " +
-                    "DrawCommand is the canvas of this BufferedRenderer.");
-        }//end if
-
-        if (this.isFull() || !drawCommand.pixmap.getTexture()
-                                                .equals(this.currentTexture)) {
-            this.flush();
-        }//end if
-
-        final float MIN_U;
-        final float MAX_U;
-        final float MIN_V;
-        final float MAX_V;
-
-        if (drawCommand.isMirroredX) {
-            MIN_U = drawCommand.pixmap.getMaxU();
-            MAX_U = drawCommand.pixmap.getMinU();
-        } else {
-            MIN_U = drawCommand.pixmap.getMinU();
-            MAX_U = drawCommand.pixmap.getMaxU();
-        }//end if
-
-        if (drawCommand.isMirroredY) {
-            MIN_V = drawCommand.pixmap.getMaxV();
-            MAX_V = drawCommand.pixmap.getMinV();
-        } else {
-            MIN_V = drawCommand.pixmap.getMinV();
-            MAX_V = drawCommand.pixmap.getMaxV();
-        }//end if
-
-        final double[] SRC_V = {
-                drawCommand.x,                      //bot-left.x
-                drawCommand.y,                      //bot-left.y
-                drawCommand.x,                      //top-left.x
-                drawCommand.y + drawCommand.height, //top-left.y
-                drawCommand.x + drawCommand.width,  //top-right.x
-                drawCommand.y + drawCommand.height, //top-right.y
-                drawCommand.x + drawCommand.width,  //bot-right.x
-                drawCommand.y                       //bot-right.y
-        };
-        final float[] DST_V = new float[SRC_V.length];
-        drawCommand.transform.transform(SRC_V, 0, DST_V, 0,
-                                        DST_V.length / 2);
-
-                     //First triangle
-        this.vertices.put(DST_V[2]).put(DST_V[3]) //top-left.xy
-                     .put(MIN_U).put(MAX_V)       //top-left.uv
-                     .put(DST_V[4]).put(DST_V[5]) //top-right.xy
-                     .put(MAX_U).put(MAX_V)       //top-right.uv
-                     .put(DST_V[0]).put(DST_V[1]) //bot-left.xy
-                     .put(MIN_U).put(MIN_V)       //bot-left.uv
-                     //Second triangle
-                     .put(DST_V[4]).put(DST_V[5]) //top-right.xy
-                     .put(MAX_U).put(MAX_V)       //top-right.uv
-                     .put(DST_V[0]).put(DST_V[1]) //bot-left.xy
-                     .put(MIN_U).put(MIN_V)       //bot-left.uv
-                     .put(DST_V[6]).put(DST_V[7]) //bot-right.xy
-                     .put(MAX_U).put(MIN_V);      //bot-right.uv
-
-        this.currentTexture = drawCommand.pixmap.getTexture();
-        ++this.size;
     }
 
     private AffineTransform getCombined() {

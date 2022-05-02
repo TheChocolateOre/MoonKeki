@@ -83,7 +83,7 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
         }
     }
 
-    public class DrawCommand implements PixmapRenderer.DrawCommand {
+    public class DrawCommand implements PixmapRenderer.AttachedDrawCommand {
         private final BatchRenderer.DrawCommand DRAW_COMMAND =
                 InstantRenderer.this.BATCH_RENDERER.drawCommand();
 
@@ -168,8 +168,67 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
         }
 
         public void draw() {
-            this.DRAW_COMMAND.queue();
-            InstantRenderer.this.BATCH_RENDERER.flush();
+            InstantRenderer.this.draw(this);
+        }
+
+        @Override
+        public Pixmap getPixmap() {
+            return this.DRAW_COMMAND.getPixmap();
+        }
+
+        @Override
+        public double getX() {
+            return this.DRAW_COMMAND.getX();
+        }
+
+        @Override
+        public double getY() {
+            return this.DRAW_COMMAND.getY();
+        }
+
+        @Override
+        public double getWidth() {
+            return this.DRAW_COMMAND.getWidth();
+        }
+
+        @Override
+        public double getHeight() {
+            return this.DRAW_COMMAND.getHeight();
+        }
+
+        @Override
+        public boolean isXMirrored() {
+            return this.DRAW_COMMAND.isXMirrored();
+        }
+
+        @Override
+        public boolean isYMirrored() {
+            return this.DRAW_COMMAND.isYMirrored();
+        }
+
+        @Override
+        public AffineTransform getTransform() {
+            return this.DRAW_COMMAND.getTransform();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+
+            return obj instanceof DrawCommand c &&
+                   this.DRAW_COMMAND.equals(c.DRAW_COMMAND);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.DRAW_COMMAND.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return this.DRAW_COMMAND.toString();
         }
     }
 
@@ -189,6 +248,16 @@ public class InstantRenderer extends PixmapRenderer implements AutoCloseable {
 
     public DrawCommand drawCommand() {
         return new DrawCommand();
+    }
+
+    @Override
+    public void process(PixmapRenderer.DrawCommand drawCommand) {
+        this.draw(drawCommand);
+    }
+
+    public void draw(PixmapRenderer.DrawCommand drawCommand) {
+        this.BATCH_RENDERER.queue(drawCommand);
+        this.BATCH_RENDERER.flush();
     }
 
     @Override
