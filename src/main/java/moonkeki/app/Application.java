@@ -51,25 +51,25 @@ public final class Application {
 
         private Builder() {}
 
-        public Builder setWindowPosition(WindowPositionFunction
-                                                 windowPositionFunction) {
+        public Builder ofWindowPosition(WindowPositionFunction
+                                        windowPositionFunction) {
             this.windowPositionFunction = windowPositionFunction;
             return this;
         }
 
         //(monitorWidth, monitorHeight) -> Size
-        public Builder setWindowSize(BiFunction<Integer, Integer, Size>
-                                             windowSizeFunction) {
+        public Builder ofWindowSize(BiFunction<Integer, Integer, Size>
+                                    windowSizeFunction) {
             this.windowSizeFunction = windowSizeFunction;
             return this;
         }
 
-        public Builder setWindowTitle(String windowTitle) {
+        public Builder ofWindowTitle(String windowTitle) {
             this.windowTitle = windowTitle;
             return this;
         }
 
-        public Builder setWindowDecoration(boolean decorated) {
+        public Builder ofWindowDecoration(boolean decorated) {
             this.windowDecorated = decorated;
             return this;
         }

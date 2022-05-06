@@ -188,9 +188,9 @@ I will create tutorials in the future, but for now, take a look at the
 `Application` class from the `app` package. Basically, in the main method write:
 ```java
 Application.configuration()
-           .setWindowPosition(...)
-           .setWindowSize(...)
-           .setWindowTitle(...)
+           .ofWindowPosition(...)
+           .ofWindowSize(...)
+           .ofWindowTitle(...)
            .build(...); //You supply the starting point here
 ```
 Important! Don't use any class unless the .build() in the above code has been
