@@ -268,74 +268,56 @@ public interface InstantEvent {
                                 this.replacementRule;
                         final AbstractInstantEvent EVENT =
                                 switch (REPLACEMENT_RULE) {
-                            case NONE -> {
-                                class NoneEventImpl extends
-                                                    AbstractInstantEvent {
-                                    NoneEventImpl() {
-                                        super(Signal.this);
+                            case NONE -> new AbstractInstantEvent(Signal.this) {
+                                @Override
+                                public Builder cleanBuilder() {
+                                    final Signal SIGNAL = this.signal;
+                                    if (SIGNAL == null) {
+                                        return InstantEvent.EMPTY
+                                                           .cleanBuilder();
                                     }
 
-                                    @Override
-                                    public Builder cleanBuilder() {
-                                        final Signal SIGNAL = this.signal;
-                                        if (SIGNAL == null) {
-                                            return InstantEvent.EMPTY
-                                                               .cleanBuilder();
-                                        }
-
-                                        return SIGNAL.eventBuilder()
-                                                .ofCapacity(CAPACITY)
-                                                .ofReplacementRule(
-                                                ReplacementRule.NONE);
-                                    }
-
-                                    @Override
-                                    void add(Instant timestamp) {
-                                        if (this.timestamps.size() ==
-                                            CAPACITY) {
-                                            return;
-                                        }
-                                        this.timestamps.add(timestamp);
-                                    }
+                                    return SIGNAL.eventBuilder()
+                                                 .ofCapacity(CAPACITY)
+                                                 .ofReplacementRule(
+                                                  ReplacementRule.NONE);
                                 }
 
-                                yield new NoneEventImpl();
-                            }
-                            case LEAST_RECENT -> {
-                                class LeastRecentEventImpl extends
-                                        AbstractInstantEvent {
-                                    LeastRecentEventImpl() {
-                                        super(Signal.this);
+                                @Override
+                                void add(Instant timestamp) {
+                                    if (this.timestamps.size() == CAPACITY) {
+                                        return;
+                                    }
+                                    this.timestamps.add(timestamp);
+                                }
+                            };
+                            case LEAST_RECENT -> new AbstractInstantEvent(
+                                    Signal.this) {
+                                @Override
+                                public Builder cleanBuilder() {
+                                    final Signal SIGNAL = this.signal;
+                                    if (SIGNAL == null) {
+                                        return InstantEvent.EMPTY
+                                                           .cleanBuilder();
                                     }
 
-                                    @Override
-                                    public Builder cleanBuilder() {
-                                        final Signal SIGNAL = this.signal;
-                                        if (SIGNAL == null) {
-                                            return InstantEvent.EMPTY
-                                                    .cleanBuilder();
-                                        }
+                                    return SIGNAL.eventBuilder()
+                                                 .ofCapacity(CAPACITY)
+                                                 .ofReplacementRule(
+                                                  ReplacementRule.LEAST_RECENT);
+                                }
 
-                                        return SIGNAL.eventBuilder()
-                                                .ofCapacity(CAPACITY)
-                                                .ofReplacementRule(
-                                                ReplacementRule.LEAST_RECENT);
+                                @Override
+                                void add(Instant timestamp) {
+                                    if (this.timestamps.size() == CAPACITY) {
+                                        //CAPACITY is positive, so it's safe
+                                        this.timestamps.removeFirst();
                                     }
-
-                                    @Override
-                                    void add(Instant timestamp) {
-                                        if (this.timestamps.size() ==
-                                            CAPACITY) {
-                                            //CAPACITY is positive, so it's safe
-                                            this.timestamps.removeFirst();
-                                        }
-                                        this.timestamps.add(timestamp);
-                                    }
-                                };
-
-                                yield new LeastRecentEventImpl();
-                            }
+                                    this.timestamps.add(timestamp);
+                                }
+                            };
                         };
+
                         Signal.this.EVENTS.add(EVENT);
                         return EVENT;
                     } finally {
@@ -402,11 +384,8 @@ public interface InstantEvent {
 
                             @Override
                             public InstantEvent build() {
-                                if (this.dirty) {
-                                    return this.BUILDER.build();
-                                }
-
-                                return SIGNAL.unbounded();
+                                return this.dirty ? this.BUILDER.build() :
+                                                    SIGNAL.unbounded();
                             }
                         };
                     }
