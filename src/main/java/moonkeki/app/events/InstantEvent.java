@@ -140,8 +140,6 @@ public interface InstantEvent {
             abstract void add(Instant timestamp);
         }
 
-        public enum ClosureState {UNDETERMINED, CLOSED}
-
         private final Lock LOCK = new ReentrantLock(true);
         //only of positive capacity
         private final Set<AbstractInstantEvent> EVENTS = new LinkedHashSet<>();
