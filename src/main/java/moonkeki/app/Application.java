@@ -31,7 +31,6 @@ public final class Application {
         void close();
     }
 
-    //TODO Method names need renaming
     public static final class Builder {
         @FunctionalInterface
         public interface WindowPositionFunction {

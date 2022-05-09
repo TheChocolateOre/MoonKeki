@@ -1,33 +1,21 @@
 package moonkeki.app.events;
 
 import java.time.Instant;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 public interface InstantEvent {
 
-    abstract class Builder {
-        private int capacity = 20;
-        private ReplacementRule replacementRule = ReplacementRule.LEAST_RECENT;
-
-        private Builder() {}
-
-        public Builder ofCapacity(int capacity) {
-            this.capacity = capacity;
-            return this;
-        }
-
-        public Builder ofReplacementRule(ReplacementRule replacementRule) {
-            this.replacementRule = replacementRule;
-            return this;
-        }
-
-        public abstract InstantEvent build();
+    interface Builder {
+        Builder ofCapacity(int capacity);
+        Builder ofReplacementRule(ReplacementRule replacementRule);
+        InstantEvent build();
     }
 
-    abstract class Snapshot {
-        private static final Snapshot EMPTY = new Snapshot() {
+    interface Snapshot {
+        Snapshot EMPTY = new Snapshot() {
             @Override
             public boolean hasOccurred() {
                 return false;
@@ -54,21 +42,425 @@ public interface InstantEvent {
             }
         };
 
-        public boolean hasOccurred() {
+        default boolean hasOccurred() {
             return !this.isEmpty();
         }
 
-        public boolean isEmpty() {
+        default boolean isEmpty() {
             return this.size() == 0;
         }
 
-        public abstract Stream<Instant> stream();
-        public abstract int size();
+        Stream<Instant> stream();
+        int size();
     }
 
-    @FunctionalInterface
-    interface Listener {
-        void onTrigger(Instant instant);
+    final class Signal implements AutoCloseable {
+        interface Listener {
+            void onTrigger(Instant timestamp);
+            void onClose();
+        }
+
+        private static abstract class AbstractInstantEvent implements
+                                                           InstantEvent {
+            final Lock LOCK = new ReentrantLock(true);
+            //If null, this InstantEvent is disconnected, otherwise this Signal
+            //won't be closed (it could be closing, but that's not a problem)
+            volatile Signal signal;
+            Deque<Instant> timestamps = new LinkedList<>();
+
+            //signal can't be null
+            AbstractInstantEvent(Signal signal) {
+                this.signal = Objects.requireNonNull(signal);
+            }
+
+            @Override
+            public Snapshot snapshot() {
+                this.LOCK.lock();
+                try {
+                    if (this.timestamps.isEmpty()) {
+                        return Snapshot.EMPTY;
+                    }
+
+                    final Collection<Instant> TIMESTAMPS = this.timestamps;
+                    this.timestamps = new LinkedList<>();
+                    return new Snapshot() {
+                        @Override
+                        public Stream<Instant> stream() {
+                            return TIMESTAMPS.stream();
+                        }
+
+                        @Override
+                        public int size() {
+                            return TIMESTAMPS.size();
+                        }
+                    };
+                } finally {
+                    this.LOCK.unlock();
+                }
+            }
+
+            public InstantEvent toClean() {
+                return this.cleanBuilder().build();
+            }
+
+            @Override
+            public void clear() {
+                this.LOCK.lock();
+                try {
+                    this.timestamps.clear();
+                } finally {
+                    this.LOCK.unlock();
+                }
+            }
+
+            @Override
+            public ConnectionState getConnectionState() {
+                return null == this.signal ? ConnectionState.DISCONNECTED :
+                                             ConnectionState.UNDETERMINED;
+            }
+
+            @Override
+            public void disconnect() {
+                final Signal SIGNAL = this.signal;
+                if (SIGNAL == null) {
+                    return;
+                }
+
+                SIGNAL.LOCK.lock();
+                try {
+                    SIGNAL.EVENTS.remove(this);
+                    this.signal = null;
+                } finally {
+                    SIGNAL.LOCK.unlock();
+                }
+            }
+
+            //this.LOCK must be acquired before calling this - helper method.
+            //timestamp can't be before last
+            abstract void add(Instant timestamp);
+        }
+
+        public enum ClosureState {UNDETERMINED, CLOSED}
+
+        private final Lock LOCK = new ReentrantLock(true);
+        //only of positive capacity
+        private final Set<AbstractInstantEvent> EVENTS = new LinkedHashSet<>();
+        private final Set<Listener> LISTENERS = new LinkedHashSet<>();
+        private Instant lastTimestamp;
+        private volatile boolean closed;
+
+        public void trigger() {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+
+                this.lastTimestamp = Instant.now();
+                this.forwardLastTimestamp();
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public void triggerElseNow(Instant timestamp) {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+
+                final Instant NOW = Instant.now();
+                this.lastTimestamp = null == this.lastTimestamp ||
+                                     this.lastTimestamp.isBefore(timestamp) ?
+                                     timestamp : NOW;
+                this.forwardLastTimestamp();
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public void triggerElseThrow(Instant timestamp) {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+
+                if (this.lastTimestamp != null &&
+                   !this.lastTimestamp.isBefore(timestamp)) {
+                    throw new IllegalArgumentException("Argument timestamp " +
+                            "must be after the last timestamp of this Signal.");
+                }
+
+                this.lastTimestamp = timestamp;
+                this.forwardLastTimestamp();
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public void attachListener(Listener listener) {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+                this.LISTENERS.add(listener);
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public void detachListener(Listener listener) {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+                this.LISTENERS.remove(listener);
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public InstantEvent.Builder eventBuilder() {
+            //for performance reasons, does not impact correctness
+            if (this.closed) {
+                return InstantEvent.EMPTY.cleanBuilder();
+            }
+
+            return new Builder() {
+                int capacity = 20;
+                ReplacementRule replacementRule = ReplacementRule.LEAST_RECENT;
+
+                @Override
+                public Builder ofCapacity(int capacity) {
+                    if (capacity < 0) {
+                        throw new IllegalArgumentException("Argument " +
+                                "capacity can't be negative.");
+                    }
+
+                    this.capacity = capacity;
+                    return this;
+                }
+
+                @Override
+                public Builder ofReplacementRule(ReplacementRule
+                                                 replacementRule) {
+                    this.replacementRule =
+                            Objects.requireNonNull(replacementRule);
+                    return this;
+                }
+
+                @Override
+                public InstantEvent build() {
+                    if (0 == this.capacity) {
+                        return InstantEvent.EMPTY;
+                    }
+
+                    Signal.this.LOCK.lock();
+                    try {
+                        if (Signal.this.closed) {
+                            return InstantEvent.EMPTY;
+                        }
+
+                        final int CAPACITY = this.capacity;
+                        final ReplacementRule REPLACEMENT_RULE =
+                                this.replacementRule;
+                        final AbstractInstantEvent EVENT =
+                                switch (REPLACEMENT_RULE) {
+                            case NONE -> {
+                                class NoneEventImpl extends
+                                                    AbstractInstantEvent {
+                                    NoneEventImpl() {
+                                        super(Signal.this);
+                                    }
+
+                                    @Override
+                                    public Builder cleanBuilder() {
+                                        final Signal SIGNAL = this.signal;
+                                        if (SIGNAL == null) {
+                                            return InstantEvent.EMPTY
+                                                               .cleanBuilder();
+                                        }
+
+                                        return SIGNAL.eventBuilder()
+                                                .ofCapacity(CAPACITY)
+                                                .ofReplacementRule(
+                                                ReplacementRule.NONE);
+                                    }
+
+                                    @Override
+                                    void add(Instant timestamp) {
+                                        if (this.timestamps.size() ==
+                                            CAPACITY) {
+                                            return;
+                                        }
+                                        this.timestamps.add(timestamp);
+                                    }
+                                }
+
+                                yield new NoneEventImpl();
+                            }
+                            case LEAST_RECENT -> {
+                                class LeastRecentEventImpl extends
+                                        AbstractInstantEvent {
+                                    LeastRecentEventImpl() {
+                                        super(Signal.this);
+                                    }
+
+                                    @Override
+                                    public Builder cleanBuilder() {
+                                        final Signal SIGNAL = this.signal;
+                                        if (SIGNAL == null) {
+                                            return InstantEvent.EMPTY
+                                                    .cleanBuilder();
+                                        }
+
+                                        return SIGNAL.eventBuilder()
+                                                .ofCapacity(CAPACITY)
+                                                .ofReplacementRule(
+                                                ReplacementRule.LEAST_RECENT);
+                                    }
+
+                                    @Override
+                                    void add(Instant timestamp) {
+                                        if (this.timestamps.size() ==
+                                            CAPACITY) {
+                                            //CAPACITY is positive, so it's safe
+                                            this.timestamps.removeFirst();
+                                        }
+                                        this.timestamps.add(timestamp);
+                                    }
+                                };
+
+                                yield new LeastRecentEventImpl();
+                            }
+                        };
+                        Signal.this.EVENTS.add(EVENT);
+                        return EVENT;
+                    } finally {
+                        Signal.this.LOCK.unlock();
+                    }
+                }
+            };
+        }
+
+        //Convenience for ofCapacity(1) & replacementRule(NONE)
+        public InstantEvent singletonLeastRecent() {
+            return this.eventBuilder()
+                       .ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.NONE)
+                       .build();
+        }
+
+        //Convenience for ofCapacity(1) & replacementRule(LEAST_RECENT)
+        public InstantEvent singletonMostRecent() {
+            return this.eventBuilder()
+                       .ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.LEAST_RECENT)
+                       .build();
+        }
+
+        //Convenience for ofCapacity(+inf) & replacementRule(NONE). Throws
+        //if too much for the underlying collection
+        public InstantEvent unbounded() {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return InstantEvent.EMPTY;
+                }
+
+                final AbstractInstantEvent EVENT =
+                        new AbstractInstantEvent(this) {
+                    @Override
+                    public Builder cleanBuilder() {
+                        final Signal SIGNAL = this.signal;
+                        if (SIGNAL == null) {
+                            return InstantEvent.EMPTY.cleanBuilder();
+                        }
+
+                        return new Builder() {
+                            final Builder BUILDER = SIGNAL.eventBuilder()
+                                    .ofCapacity(Integer.MAX_VALUE)
+                                    .ofReplacementRule(ReplacementRule.NONE);
+                            boolean dirty;
+
+                            @Override
+                            public Builder ofCapacity(int capacity) {
+                                this.BUILDER.ofCapacity(capacity);
+                                this.dirty = true;
+                                return this;
+                            }
+
+                            @Override
+                            public Builder ofReplacementRule(ReplacementRule
+                                                             replacementRule) {
+                                this.BUILDER.ofReplacementRule(replacementRule);
+                                this.dirty = true;
+                                return this;
+                            }
+
+                            @Override
+                            public InstantEvent build() {
+                                if (this.dirty) {
+                                    return this.BUILDER.build();
+                                }
+
+                                return SIGNAL.unbounded();
+                            }
+                        };
+                    }
+
+                    @Override
+                    void add(Instant timestamp) {
+                        this.timestamps.add(timestamp);
+                    }
+                };
+                this.EVENTS.add(EVENT);
+                return EVENT;
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        public ClosureState getClosureState() {
+            return this.closed ? ClosureState.CLOSED :
+                                 ClosureState.UNDETERMINED;
+        }
+
+        @Override
+        public void close() {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+
+                this.LISTENERS.forEach(Listener::onClose);
+                for (AbstractInstantEvent e : this.EVENTS) {
+                    e.LOCK.lock();
+                    try {
+                        e.signal = null;
+                    } finally {
+                        e.LOCK.unlock();
+                    }
+                }
+
+                this.EVENTS.clear();
+                this.LISTENERS.clear();
+                this.closed = true;
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        //this.LOCK must be acquired before calling this - helper method
+        private void forwardLastTimestamp() {
+            this.EVENTS.forEach(e -> e.add(this.lastTimestamp));
+            this.LISTENERS.forEach(l -> l.onTrigger(this.lastTimestamp));
+        }
     }
 
     InstantEvent EMPTY = new InstantEvent() {
@@ -83,32 +475,36 @@ public interface InstantEvent {
         }
 
         @Override
-        public Builder cleanBuilder() {
-            throw new UnsupportedOperationException();
-        }
+        public InstantEvent.Builder cleanBuilder() {
+            return new Builder() {
+                @Override
+                public Builder ofCapacity(int capacity) {
+                    return this;
+                }
 
-        @Override
-        public ReplacementRule getReplacementRule() {
-            throw new UnsupportedOperationException();
+                @Override
+                public Builder ofReplacementRule(ReplacementRule
+                                                 replacementRule) {
+                    return this;
+                }
+
+                @Override
+                public InstantEvent build() {
+                    return InstantEvent.EMPTY;
+                }
+            };
         }
 
         @Override
         public void clear() {}
 
         @Override
-        public int capacity() {
-            return 0;
+        public ConnectionState getConnectionState() {
+            return ConnectionState.DISCONNECTED;
         }
 
         @Override
-        public boolean isDisconnected() {
-            return false;
-        }
-
-        @Override
-        public void disconnect() {
-            throw new UnsupportedOperationException();
-        }
+        public void disconnect() {}
 
         @Override
         public String toString() {
@@ -119,10 +515,8 @@ public interface InstantEvent {
     Snapshot snapshot();
     InstantEvent toClean();
     InstantEvent.Builder cleanBuilder();
-    ReplacementRule getReplacementRule();
     void clear();
-    int capacity();
-    boolean isDisconnected();
+    ConnectionState getConnectionState();
     void disconnect();
 
 }
