@@ -9,6 +9,23 @@ import java.util.stream.Stream;
 public interface InstantEvent {
 
     interface Builder {
+        //Convenience for ofCapacity(1) & replacementRule(NONE)
+        default InstantEvent singletonLeastRecent() {
+            return this.ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.NONE)
+                       .build();
+        }
+
+        //Convenience for ofCapacity(1) & replacementRule(LEAST_RECENT)
+        default InstantEvent singletonMostRecent() {
+            return this.ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.LEAST_RECENT)
+                       .build();
+        }
+
+        //ofCapacity(+inf) & replacementRule(NONE). Throws if too much for the
+        //underlying collection
+        InstantEvent unbounded();
         Builder ofCapacity(int capacity);
         Builder ofReplacementRule(ReplacementRule replacementRule);
         InstantEvent build();
@@ -233,6 +250,74 @@ public interface InstantEvent {
                 ReplacementRule replacementRule = ReplacementRule.LEAST_RECENT;
 
                 @Override
+                public InstantEvent unbounded() {
+                    Signal.this.LOCK.lock();
+                    try {
+                        if (Signal.this.closed) {
+                            return InstantEvent.EMPTY;
+                        }
+
+                        final AbstractInstantEvent EVENT =
+                          new AbstractInstantEvent(Signal.this) {
+                            @Override
+                            public Builder cleanBuilder() {
+                                final Signal SIGNAL = this.signal;
+                                if (SIGNAL == null) {
+                                    return InstantEvent.EMPTY.cleanBuilder();
+                                }
+
+                                return new Builder() {
+                                    final Builder BUILDER =
+                                            SIGNAL.eventBuilder()
+                                            .ofCapacity(Integer.MAX_VALUE)
+                                            .ofReplacementRule(
+                                               ReplacementRule.NONE);
+                                    boolean dirty;
+
+                                    @Override
+                                    public InstantEvent unbounded() {
+                                        return this.BUILDER.unbounded();
+                                    }
+
+                                    @Override
+                                    public Builder ofCapacity(int capacity) {
+                                        this.BUILDER.ofCapacity(capacity);
+                                        this.dirty = true;
+                                        return this;
+                                    }
+
+                                    @Override
+                                    public Builder ofReplacementRule(
+                                     ReplacementRule replacementRule) {
+                                        this.BUILDER
+                                            .ofReplacementRule(replacementRule);
+                                        this.dirty = true;
+                                        return this;
+                                    }
+
+                                    @Override
+                                    public InstantEvent build() {
+                                        return this.dirty ?
+                                               this.BUILDER.build() :
+                                               this.BUILDER.unbounded();
+                                    }
+                                };
+                            }
+
+                            @Override
+                            void add(Instant timestamp) {
+                                this.timestamps.add(timestamp);
+                            }
+                        };
+
+                        Signal.this.EVENTS.add(EVENT);
+                        return EVENT;
+                    } finally {
+                        Signal.this.LOCK.unlock();
+                    }
+                }
+
+                @Override
                 public Builder ofCapacity(int capacity) {
                     if (capacity < 0) {
                         throw new IllegalArgumentException("Argument " +
@@ -327,81 +412,6 @@ public interface InstantEvent {
             };
         }
 
-        //Convenience for ofCapacity(1) & replacementRule(NONE)
-        public InstantEvent singletonLeastRecent() {
-            return this.eventBuilder()
-                       .ofCapacity(1)
-                       .ofReplacementRule(ReplacementRule.NONE)
-                       .build();
-        }
-
-        //Convenience for ofCapacity(1) & replacementRule(LEAST_RECENT)
-        public InstantEvent singletonMostRecent() {
-            return this.eventBuilder()
-                       .ofCapacity(1)
-                       .ofReplacementRule(ReplacementRule.LEAST_RECENT)
-                       .build();
-        }
-
-        //Convenience for ofCapacity(+inf) & replacementRule(NONE). Throws
-        //if too much for the underlying collection
-        public InstantEvent unbounded() {
-            this.LOCK.lock();
-            try {
-                if (this.closed) {
-                    return InstantEvent.EMPTY;
-                }
-
-                final AbstractInstantEvent EVENT =
-                        new AbstractInstantEvent(this) {
-                    @Override
-                    public Builder cleanBuilder() {
-                        final Signal SIGNAL = this.signal;
-                        if (SIGNAL == null) {
-                            return InstantEvent.EMPTY.cleanBuilder();
-                        }
-
-                        return new Builder() {
-                            final Builder BUILDER = SIGNAL.eventBuilder()
-                                    .ofCapacity(Integer.MAX_VALUE)
-                                    .ofReplacementRule(ReplacementRule.NONE);
-                            boolean dirty;
-
-                            @Override
-                            public Builder ofCapacity(int capacity) {
-                                this.BUILDER.ofCapacity(capacity);
-                                this.dirty = true;
-                                return this;
-                            }
-
-                            @Override
-                            public Builder ofReplacementRule(ReplacementRule
-                                                             replacementRule) {
-                                this.BUILDER.ofReplacementRule(replacementRule);
-                                this.dirty = true;
-                                return this;
-                            }
-
-                            @Override
-                            public InstantEvent build() {
-                                return this.dirty ? this.BUILDER.build() :
-                                                    SIGNAL.unbounded();
-                            }
-                        };
-                    }
-
-                    @Override
-                    void add(Instant timestamp) {
-                        this.timestamps.add(timestamp);
-                    }
-                };
-                this.EVENTS.add(EVENT);
-                return EVENT;
-            } finally {
-                this.LOCK.unlock();
-            }
-        }
-
         public ClosureState getClosureState() {
             return this.closed ? ClosureState.CLOSED :
                                  ClosureState.UNDETERMINED;
@@ -454,6 +464,21 @@ public interface InstantEvent {
         @Override
         public InstantEvent.Builder cleanBuilder() {
             return new Builder() {
+                @Override
+                public InstantEvent singletonLeastRecent() {
+                    return InstantEvent.EMPTY;
+                }
+
+                @Override
+                public InstantEvent singletonMostRecent() {
+                    return InstantEvent.EMPTY;
+                }
+
+                @Override
+                public InstantEvent unbounded() {
+                    return InstantEvent.EMPTY;
+                }
+
                 @Override
                 public Builder ofCapacity(int capacity) {
                     return this;
