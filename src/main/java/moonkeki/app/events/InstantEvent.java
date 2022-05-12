@@ -31,6 +31,11 @@ public interface InstantEvent {
         InstantEvent build();
     }
 
+    interface Listener {
+        void onTrigger(Instant timestamp);
+        void onClose();
+    }
+
     interface Snapshot {
         Snapshot EMPTY = new Snapshot() {
             @Override
@@ -71,12 +76,14 @@ public interface InstantEvent {
         int size();
     }
 
-    final class Signal implements AutoCloseable {
-        interface Listener {
-            void onTrigger(Instant timestamp);
-            void onClose();
-        }
+    interface Hub {
+        void attachListener(Listener listener);
+        void detachListener(Listener listener);
+        Builder eventBuilder();
+        ClosureState getClosureState();
+    }
 
+    final class Signal implements AutoCloseable {
         private static abstract class AbstractInstantEvent implements
                                                            InstantEvent {
             final Lock LOCK = new ReentrantLock(true);
@@ -163,6 +170,27 @@ public interface InstantEvent {
         private final Set<Listener> LISTENERS = new LinkedHashSet<>();
         private Instant lastTimestamp;
         private volatile boolean closed;
+        private final Hub HUB = new Hub() {
+            @Override
+            public void attachListener(Listener listener) {
+                Signal.this.attachListener(listener);
+            }
+
+            @Override
+            public void detachListener(Listener listener) {
+                Signal.this.detachListener(listener);
+            }
+
+            @Override
+            public Builder eventBuilder() {
+                return Signal.this.eventBuilder();
+            }
+
+            @Override
+            public ClosureState getClosureState() {
+                return Signal.this.getClosureState();
+            }
+        };
 
         public void trigger() {
             this.LOCK.lock();
@@ -215,7 +243,42 @@ public interface InstantEvent {
             }
         }
 
-        public void attachListener(Listener listener) {
+        public Hub getHub() {
+            return this.HUB;
+        }
+
+        public ClosureState getClosureState() {
+            return this.closed ? ClosureState.CLOSED :
+                    ClosureState.UNDETERMINED;
+        }
+
+        @Override
+        public void close() {
+            this.LOCK.lock();
+            try {
+                if (this.closed) {
+                    return;
+                }
+
+                this.LISTENERS.forEach(Listener::onClose);
+                for (AbstractInstantEvent e : this.EVENTS) {
+                    e.LOCK.lock();
+                    try {
+                        e.signal = null;
+                    } finally {
+                        e.LOCK.unlock();
+                    }
+                }
+
+                this.EVENTS.clear();
+                this.LISTENERS.clear();
+                this.closed = true;
+            } finally {
+                this.LOCK.unlock();
+            }
+        }
+
+        private void attachListener(Listener listener) {
             this.LOCK.lock();
             try {
                 if (this.closed) {
@@ -227,7 +290,7 @@ public interface InstantEvent {
             }
         }
 
-        public void detachListener(Listener listener) {
+        private void detachListener(Listener listener) {
             this.LOCK.lock();
             try {
                 if (this.closed) {
@@ -239,7 +302,7 @@ public interface InstantEvent {
             }
         }
 
-        public InstantEvent.Builder eventBuilder() {
+        private InstantEvent.Builder eventBuilder() {
             //for performance reasons, does not impact correctness
             if (this.closed) {
                 return InstantEvent.EMPTY.cleanBuilder();
@@ -410,37 +473,6 @@ public interface InstantEvent {
                     }
                 }
             };
-        }
-
-        public ClosureState getClosureState() {
-            return this.closed ? ClosureState.CLOSED :
-                                 ClosureState.UNDETERMINED;
-        }
-
-        @Override
-        public void close() {
-            this.LOCK.lock();
-            try {
-                if (this.closed) {
-                    return;
-                }
-
-                this.LISTENERS.forEach(Listener::onClose);
-                for (AbstractInstantEvent e : this.EVENTS) {
-                    e.LOCK.lock();
-                    try {
-                        e.signal = null;
-                    } finally {
-                        e.LOCK.unlock();
-                    }
-                }
-
-                this.EVENTS.clear();
-                this.LISTENERS.clear();
-                this.closed = true;
-            } finally {
-                this.LOCK.unlock();
-            }
         }
 
         //this.LOCK must be acquired before calling this - helper method

@@ -63,7 +63,7 @@ renderer.shaderCommand()
         .add(blur)
         .add(negative)
         .add(chromatic)
-        .apply()
+        .apply();
 ```
 
 ### Is this cross-platform?
