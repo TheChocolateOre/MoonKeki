@@ -429,8 +429,8 @@ public interface InstantEvent {
             }
 
             return new Builder() {
-                int capacity = 20;
-                ReplacementRule replacementRule = ReplacementRule.LEAST_RECENT;
+                Integer capacity; //if null, unbounded (the default)
+                ReplacementRule replacementRule = ReplacementRule.NONE;
 
                 @Override
                 public InstantEvent unbounded() {
@@ -521,6 +521,10 @@ public interface InstantEvent {
 
                 @Override
                 public InstantEvent build() {
+                    if (null == this.capacity) {
+                        return this.unbounded();
+                    }
+
                     if (0 == this.capacity) {
                         return InstantEvent.EMPTY;
                     }
