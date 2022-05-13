@@ -2,6 +2,7 @@ package moonkeki.app.events;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
@@ -34,6 +35,99 @@ public interface InstantEvent {
     interface Listener {
         void onTrigger(Instant timestamp);
         void onClose();
+    }
+
+    final class CompositeORBuilder {
+        private final Set<Hub> HUBS = new HashSet<>();
+
+        private CompositeORBuilder() {}
+
+        public CompositeORBuilder add(Hub hub) {
+            if (hub.getClosureState() == ClosureState.UNDETERMINED) {
+                this.HUBS.add(hub);
+            }
+            return this;
+        }
+
+        public CloseableHub build() {
+            if (this.HUBS.isEmpty()) {
+                new CloseableHub() {
+                    @Override
+                    public boolean attachListener(Listener listener) {
+                        return Hub.EMPTY.attachListener(listener);
+                    }
+
+                    @Override
+                    public void detachListener(Listener listener) {
+                        Hub.EMPTY.detachListener(listener);
+                    }
+
+                    @Override
+                    public Builder eventBuilder() {
+                        return Hub.EMPTY.eventBuilder();
+                    }
+
+                    @Override
+                    public ClosureState getClosureState() {
+                        return Hub.EMPTY.getClosureState();
+                    }
+
+                    @Override
+                    public void close() {}
+                };
+            }
+
+            final Signal SIGNAL = new Signal();
+            Set<Hub> HUBS = Collections.newSetFromMap(
+                                        new ConcurrentHashMap<>());
+            HUBS.addAll(this.HUBS);
+            this.HUBS.forEach(h -> {
+                Listener LISTENER = new Listener() {
+                    @Override
+                    public void onTrigger(Instant timestamp) {
+                        SIGNAL.triggerElseNow(timestamp);
+                    }
+
+                    @Override
+                    public void onClose() {
+                        HUBS.remove(h);
+                        if (HUBS.isEmpty()) {
+                            SIGNAL.close();
+                        }
+                    }
+                };
+                if (!h.attachListener(LISTENER)) {
+                    HUBS.remove(h);
+                }
+            });
+
+            return new CloseableHub() {
+                @Override
+                public boolean attachListener(Listener listener) {
+                    return SIGNAL.attachListener(listener);
+                }
+
+                @Override
+                public void detachListener(Listener listener) {
+                    SIGNAL.detachListener(listener);
+                }
+
+                @Override
+                public Builder eventBuilder() {
+                    return SIGNAL.eventBuilder();
+                }
+
+                @Override
+                public ClosureState getClosureState() {
+                    return SIGNAL.getClosureState();
+                }
+
+                @Override
+                public void close() {
+                    SIGNAL.close();
+                }
+            };
+        }
     }
 
     interface Snapshot {
@@ -77,10 +171,34 @@ public interface InstantEvent {
     }
 
     interface Hub {
-        void attachListener(Listener listener);
+        Hub EMPTY = new Hub() {
+            @Override
+            public boolean attachListener(Listener listener) {return false;}
+
+            @Override
+            public void detachListener(Listener listener) {}
+
+            @Override
+            public Builder eventBuilder() {
+                return InstantEvent.EMPTY.cleanBuilder();
+            }
+
+            @Override
+            public ClosureState getClosureState() {
+                return ClosureState.CLOSED;
+            }
+        };
+
+        //false if this Hub is closed, otherwise true
+        boolean attachListener(Listener listener);
         void detachListener(Listener listener);
         Builder eventBuilder();
         ClosureState getClosureState();
+    }
+
+    interface CloseableHub extends Hub, AutoCloseable {
+        @Override
+        void close();
     }
 
     final class Signal implements AutoCloseable {
@@ -172,8 +290,8 @@ public interface InstantEvent {
         private volatile boolean closed;
         private final Hub HUB = new Hub() {
             @Override
-            public void attachListener(Listener listener) {
-                Signal.this.attachListener(listener);
+            public boolean attachListener(Listener listener) {
+                return Signal.this.attachListener(listener);
             }
 
             @Override
@@ -278,13 +396,15 @@ public interface InstantEvent {
             }
         }
 
-        private void attachListener(Listener listener) {
+        //false if this Signal is closed, otherwise true
+        private boolean attachListener(Listener listener) {
             this.LOCK.lock();
             try {
                 if (this.closed) {
-                    return;
+                    return false;
                 }
                 this.LISTENERS.add(listener);
+                return true;
             } finally {
                 this.LOCK.unlock();
             }
@@ -545,6 +665,9 @@ public interface InstantEvent {
             return "InstantEvent.EMPTY";
         }
     };
+    static CompositeORBuilder compositeOR() {
+        return new CompositeORBuilder();
+    }
 
     Snapshot snapshot();
     InstantEvent toClean();
