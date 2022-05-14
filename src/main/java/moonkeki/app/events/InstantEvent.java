@@ -49,9 +49,9 @@ public interface InstantEvent {
             return this;
         }
 
-        public CloseableHub build() {
+        public Hub.Closeable build() {
             if (this.HUBS.isEmpty()) {
-                new CloseableHub() {
+                new Hub.Closeable() {
                     @Override
                     public boolean attachListener(Listener listener) {
                         return Hub.EMPTY.attachListener(listener);
@@ -101,7 +101,7 @@ public interface InstantEvent {
                 }
             });
 
-            return new CloseableHub() {
+            return new Hub.Closeable() {
                 @Override
                 public boolean attachListener(Listener listener) {
                     return SIGNAL.attachListener(listener);
@@ -171,6 +171,11 @@ public interface InstantEvent {
     }
 
     interface Hub {
+        interface Closeable extends Hub, AutoCloseable {
+            @Override
+            void close();
+        }
+
         Hub EMPTY = new Hub() {
             @Override
             public boolean attachListener(Listener listener) {return false;}
@@ -194,11 +199,6 @@ public interface InstantEvent {
         void detachListener(Listener listener);
         Builder eventBuilder();
         ClosureState getClosureState();
-    }
-
-    interface CloseableHub extends Hub, AutoCloseable {
-        @Override
-        void close();
     }
 
     final class Signal implements AutoCloseable {
