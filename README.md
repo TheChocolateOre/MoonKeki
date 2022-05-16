@@ -7,10 +7,13 @@ change substantially. Tests are absent or minimally performed.
 ___
 
 ### Is this a library, framework or game engine?
-I think of libraries as code that your code calls. Frameworks, as code that
-calls your code and engines as platforms that support game development
-thoroughly. That being said, this is probably more like a **framework**. It has
-library attributes too though.
+I'd like to think of the above as:
+- **Libraries**: Code that **your code calls**.
+- **Frameworks**: Code that **calls your code**.
+- **Engines**: Platforms that support game development thoroughly.
+
+That being said, this is probably more like a **framework**. It has library 
+attributes too though.
 
 ### Is this 3D too?
 **No, it is only 2D.** It is not 3D or 4D or 3.14D or a coffee machine.
