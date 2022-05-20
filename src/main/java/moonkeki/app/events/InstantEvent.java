@@ -51,30 +51,7 @@ public interface InstantEvent {
 
         public Hub.Closeable build() {
             if (this.HUBS.isEmpty()) {
-                new Hub.Closeable() {
-                    @Override
-                    public boolean attachListener(Listener listener) {
-                        return Hub.EMPTY.attachListener(listener);
-                    }
-
-                    @Override
-                    public void detachListener(Listener listener) {
-                        Hub.EMPTY.detachListener(listener);
-                    }
-
-                    @Override
-                    public Builder eventBuilder() {
-                        return Hub.EMPTY.eventBuilder();
-                    }
-
-                    @Override
-                    public ClosureState getClosureState() {
-                        return Hub.EMPTY.getClosureState();
-                    }
-
-                    @Override
-                    public void close() {}
-                };
+                return Hub.EMPTY;
             }
 
             final Signal SIGNAL = new Signal();
@@ -176,7 +153,7 @@ public interface InstantEvent {
             void close();
         }
 
-        Hub EMPTY = new Hub() {
+        Closeable EMPTY = new Closeable() {
             @Override
             public boolean attachListener(Listener listener) {return false;}
 
@@ -191,6 +168,14 @@ public interface InstantEvent {
             @Override
             public ClosureState getClosureState() {
                 return ClosureState.CLOSED;
+            }
+
+            @Override
+            public void close() {}
+
+            @Override
+            public String toString() {
+                return "Hub.EMPTY";
             }
         };
 
