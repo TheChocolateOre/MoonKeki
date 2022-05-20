@@ -177,7 +177,7 @@ public interface InstantEvent {
 
             @Override
             public String toString() {
-                return "Hub.EMPTY";
+                return "InstantEvent.Hub.EMPTY";
             }
         };
 
