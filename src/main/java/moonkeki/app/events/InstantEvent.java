@@ -3,6 +3,7 @@ package moonkeki.app.events;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
@@ -34,6 +35,7 @@ public interface InstantEvent {
 
     interface Listener {
         void onTrigger(Instant timestamp);
+        //Will be called only on the first close() of the underlying source
         void onClose();
     }
 
@@ -55,9 +57,12 @@ public interface InstantEvent {
             }
 
             final Signal SIGNAL = new Signal();
-            Set<Hub> HUBS = Collections.newSetFromMap(
-                                        new ConcurrentHashMap<>());
-            HUBS.addAll(this.HUBS);
+            final AtomicInteger COUNTER = new AtomicInteger(this.HUBS.size());
+            final Runnable DECREMENT = () -> {
+                if (COUNTER.decrementAndGet() == 0) {
+                    SIGNAL.close();
+                }
+            };
             this.HUBS.forEach(h -> {
                 Listener LISTENER = new Listener() {
                     @Override
@@ -67,14 +72,11 @@ public interface InstantEvent {
 
                     @Override
                     public void onClose() {
-                        HUBS.remove(h);
-                        if (HUBS.isEmpty()) {
-                            SIGNAL.close();
-                        }
+                        DECREMENT.run();
                     }
                 };
                 if (!h.attachListener(LISTENER)) {
-                    HUBS.remove(h);
+                    DECREMENT.run();
                 }
             });
 
@@ -153,7 +155,7 @@ public interface InstantEvent {
             void close();
         }
 
-        Closeable EMPTY = new Closeable() {
+        Hub.Closeable EMPTY = new Closeable() {
             @Override
             public boolean attachListener(Listener listener) {return false;}
 
