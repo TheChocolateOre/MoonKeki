@@ -366,14 +366,7 @@ public interface InstantEvent {
                 }
 
                 this.LISTENERS.forEach(Listener::onClose);
-                for (AbstractInstantEvent e : this.EVENTS) {
-                    e.LOCK.lock();
-                    try {
-                        e.signal = null;
-                    } finally {
-                        e.LOCK.unlock();
-                    }
-                }
+                this.EVENTS.forEach(e -> e.signal = null);
 
                 this.EVENTS.clear();
                 this.LISTENERS.clear();
