@@ -7,7 +7,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-public interface InstantEvent {
+public interface InstantEvent extends Event {
 
     interface Builder {
         //Convenience for ofCapacity(1) & replacementRule(NONE)
@@ -193,12 +193,24 @@ public interface InstantEvent {
             final Lock LOCK = new ReentrantLock(true);
             //If null, this InstantEvent is disconnected, otherwise this Signal
             //won't be closed (it could be closing, but that's not a problem)
-            volatile Signal signal;
+            volatile InstantEvent.Signal signal;
             Deque<Instant> timestamps = new LinkedList<>();
 
             //signal can't be null
-            AbstractInstantEvent(Signal signal) {
+            AbstractInstantEvent(InstantEvent.Signal signal) {
                 this.signal = Objects.requireNonNull(signal);
+            }
+
+            @Override
+            public boolean hasOccurred() {
+                this.LOCK.lock();
+                try {
+                    final boolean OCCURRED = !this.timestamps.isEmpty();
+                    this.timestamps.clear();
+                    return OCCURRED;
+                } finally {
+                    this.LOCK.unlock();
+                }
             }
 
             @Override
@@ -249,7 +261,7 @@ public interface InstantEvent {
 
             @Override
             public void disconnect() {
-                final Signal SIGNAL = this.signal;
+                final InstantEvent.Signal SIGNAL = this.signal;
                 if (SIGNAL == null) {
                     return;
                 }
@@ -605,6 +617,11 @@ public interface InstantEvent {
     }
 
     InstantEvent EMPTY = new InstantEvent() {
+        @Override
+        public boolean hasOccurred() {
+            return false;
+        }
+
         @Override
         public Snapshot snapshot() {
             return Snapshot.EMPTY;
