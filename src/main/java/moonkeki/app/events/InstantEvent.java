@@ -2,7 +2,6 @@ package moonkeki.app.events;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -384,6 +383,8 @@ public interface InstantEvent {
                     return false;
                 }
                 this.LISTENERS.add(listener);
+                //listener may be already present in LISTENERS Set, that's why
+                //we can't just return the result of Set::add()
                 return true;
             } finally {
                 this.LOCK.unlock();
@@ -469,7 +470,12 @@ public interface InstantEvent {
 
                             @Override
                             void add(Instant timestamp) {
-                                this.timestamps.add(timestamp);
+                                this.LOCK.lock();
+                                try {
+                                    this.timestamps.add(timestamp);
+                                } finally {
+                                    this.LOCK.unlock();
+                                }
                             }
                         };
 
@@ -537,10 +543,16 @@ public interface InstantEvent {
 
                                 @Override
                                 void add(Instant timestamp) {
-                                    if (this.timestamps.size() == CAPACITY) {
-                                        return;
+                                    this.LOCK.lock();
+                                    try {
+                                        if (this.timestamps.size() ==
+                                            CAPACITY) {
+                                            return;
+                                        }
+                                        this.timestamps.add(timestamp);
+                                    } finally {
+                                        this.LOCK.unlock();
                                     }
-                                    this.timestamps.add(timestamp);
                                 }
                             };
                             case LEAST_RECENT -> new AbstractInstantEvent(
@@ -561,11 +573,17 @@ public interface InstantEvent {
 
                                 @Override
                                 void add(Instant timestamp) {
-                                    if (this.timestamps.size() == CAPACITY) {
-                                        //CAPACITY is positive, so it's safe
-                                        this.timestamps.removeFirst();
+                                    this.LOCK.lock();
+                                    try {
+                                        if (this.timestamps.size() ==
+                                            CAPACITY) {
+                                            //CAPACITY is positive, so it's safe
+                                            this.timestamps.removeFirst();
+                                        }
+                                        this.timestamps.add(timestamp);
+                                    } finally {
+                                        this.LOCK.unlock();
                                     }
-                                    this.timestamps.add(timestamp);
                                 }
                             };
                         };
