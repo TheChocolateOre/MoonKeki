@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 public final class Keyboard {
 
-    public enum Key {
+    public enum Key implements Keyboard.Button {
         SPACE(GLFW.GLFW_KEY_SPACE), APOSTROPHE(GLFW.GLFW_KEY_APOSTROPHE),
         COMMA(GLFW.GLFW_KEY_COMMA), MINUS(GLFW.GLFW_KEY_MINUS),
         PERIOD(GLFW.GLFW_KEY_PERIOD), SLASH(GLFW.GLFW_KEY_SLASH),
@@ -84,9 +84,6 @@ public final class Keyboard {
 
         private static final Key[] ID_TO_KEY;
         private static final int OFFSET;
-
-        //TODO Refactor(move) it out, in Keyboard
-        @Deprecated
         private static final Map<Integer, Keyboard.Button> LOCAL_ID_TO_BUTTON =
                 new HashMap<>(GLFW.GLFW_KEY_LAST);
 
@@ -105,24 +102,21 @@ public final class Keyboard {
             ID_TO_KEY = new Key[STATS.getMax() + Key.OFFSET + 1];
             for (Key k : VALUES) {
                 Key.ID_TO_KEY[k.ID + Key.OFFSET] = k;
-                Optional<Keyboard.Button> buttonOptional = k.asButton();
-                if (buttonOptional.isPresent()) {
-                    final Keyboard.Button b = buttonOptional.get();
-                    Key.LOCAL_ID_TO_BUTTON.put(b.getLocalId(), b);
+                if (k.exists()) {
+                    Key.LOCAL_ID_TO_BUTTON.put(k.LOCAL_ID, k.ABSTRACT_BUTTON);
                 }
             }
         }
 
-        private static Optional<Key> fromId(final int id) {
-            final int INDEX = id + Key.OFFSET;
-            if (INDEX < 0 || INDEX >= Key.ID_TO_KEY.length) {
-                return Optional.empty();
-            }
-            return Optional.ofNullable(Key.ID_TO_KEY[INDEX]);
+        private static Key fromId(final int id) {
+            final int INDEX = Objects.checkIndex(id + Key.OFFSET,
+                                                 Key.ID_TO_KEY.length);
+            return Key.ID_TO_KEY[INDEX];
         }
 
         private final int ID;
-        private final Keyboard.AbstractButton BUTTON;
+        private final int LOCAL_ID;
+        private final Keyboard.AbstractButton ABSTRACT_BUTTON;
 
         Key(final int id) {
             if (id == GLFW.GLFW_KEY_UNKNOWN) {
@@ -130,55 +124,77 @@ public final class Keyboard {
                         "mapping.");
             }
 
-            final int LOCAL_ID = GLFW.glfwGetKeyScancode(id);
             this.ID = id;
-            this.BUTTON = LOCAL_ID != -1 ? new Keyboard.AbstractButton() {
+            this.LOCAL_ID = GLFW.glfwGetKeyScancode(id);
+
+            this.ABSTRACT_BUTTON = LOCAL_ID != -1 ? new AbstractButton() {
                 @Override
                 public Optional<String> getSymbol() {
-                    return Key.this.getName();
+                    return Key.this.getSymbol();
                 }
 
                 @Override
-                public int getLocalId() {
-                    return LOCAL_ID;
+                public OptionalInt getLocalId() {
+                    return Key.this.getLocalId();
                 }
 
                 @Override
                 public Button.State getState() {
-                    return (GLFW.glfwGetKey(GLFW.glfwGetCurrentContext(), id) ==
-                            GLFW.GLFW_PRESS) ? Button.State.PRESSED :
-                                               Button.State.RELEASED;
+                    return Key.this.getState();
                 }
             } : null;
         }
 
-        public boolean exists() {
-            return this.BUTTON != null;
+        @Override
+        public Event.Hub eventHub(State triggerState) {
+            return this.ABSTRACT_BUTTON != null ?
+                   this.ABSTRACT_BUTTON.eventHub(triggerState) :
+                   Event.Hub.EMPTY;
         }
 
-        public Optional<Keyboard.Button> asButton() {
-            return Optional.ofNullable(this.BUTTON);
+        @Override
+        public InstantEvent.Hub instantEventHub(State triggerState) {
+            return this.ABSTRACT_BUTTON != null ?
+                   this.ABSTRACT_BUTTON.instantEventHub(triggerState) :
+                   InstantEvent.Hub.EMPTY;
         }
 
-        public Optional<String> getName() {
+        @Override
+        public State getState() {
+            return (GLFW.glfwGetKey(GLFW.glfwGetCurrentContext(), this.ID) ==
+                    GLFW.GLFW_PRESS) ? Button.State.PRESSED :
+                    Button.State.RELEASED;
+        }
+
+        @Override
+        public Optional<String> getSymbol() {
             return Optional.ofNullable(GLFW.glfwGetKeyName(this.ID,
-                    this.exists() ? this.BUTTON.getLocalId() : 0));
+                                                           this.getLocalId()
+                                                               .orElse(-1)));
+        }
+
+        @Override
+        public OptionalInt getLocalId() {
+            return this.LOCAL_ID != -1 ? OptionalInt.of(this.LOCAL_ID) :
+                                         OptionalInt.empty();
+        }
+
+        public boolean exists() {
+            return this.ABSTRACT_BUTTON != null;
         }
     }
 
     public interface Button extends moonkeki.app.input.Button {
         static Keyboard.Button fromLocalId(int localId) {
-            Keyboard.Button button = Key.LOCAL_ID_TO_BUTTON.get(localId);
-            if (button != null) {
-                return button;
-            }
-
-            return Keyboard.LOCAL_BUTTONS.computeIfAbsent(localId,
+            final Keyboard.Button BUTTON = Key.LOCAL_ID_TO_BUTTON.get(localId);
+            return BUTTON != null ?
+                   BUTTON :
+                   Keyboard.LOCAL_BUTTONS.computeIfAbsent(localId,
                                                           LocalButton::new);
         }
 
         Optional<String> getSymbol();
-        int getLocalId();
+        OptionalInt getLocalId();
     }
 
     private static abstract class AbstractButton implements Keyboard.Button {
@@ -233,8 +249,8 @@ public final class Keyboard {
         }
 
         @Override
-        public int getLocalId() {
-            return this.LOCAL_ID;
+        public OptionalInt getLocalId() {
+            return OptionalInt.of(this.LOCAL_ID);
         }
 
         @Override
@@ -267,11 +283,13 @@ public final class Keyboard {
             default -> {return;}
         }
 
-        final AbstractButton BUTTON = (key != GLFW.GLFW_KEY_UNKNOWN) ?
-                Key.fromId(key).get().BUTTON :
+        final AbstractButton ABSTRACT_BUTTON = (key != GLFW.GLFW_KEY_UNKNOWN) ?
+                Key.fromId(key).ABSTRACT_BUTTON :
                 Keyboard.LOCAL_BUTTONS.computeIfAbsent(scancode,
                         s -> new LocalButton(s, STATE));
-        BUTTON.registerEvent(STATE, TIMESTAMP);
+        if (ABSTRACT_BUTTON != null) {
+            ABSTRACT_BUTTON.registerEvent(STATE, TIMESTAMP);
+        }
     }
 
     private Keyboard() {
