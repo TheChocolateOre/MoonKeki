@@ -1,9 +1,12 @@
 package moonkeki.app.input;
 
+import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEvent;
 import org.lwjgl.glfw.GLFW;
 
+import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public final class Keyboard {
@@ -81,12 +84,19 @@ public final class Keyboard {
 
         private static final Key[] ID_TO_KEY;
         private static final int OFFSET;
+
         //TODO Refactor(move) it out, in Keyboard
         @Deprecated
-        private static final Map<Integer, Button> LOCAL_ID_TO_BUTTON =
+        private static final Map<Integer, Keyboard.Button> LOCAL_ID_TO_BUTTON =
                 new HashMap<>(GLFW.GLFW_KEY_LAST);
 
         static {
+            try {
+                Class.forName("moonkeki.app.input.Keyboard");
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+
             final Key[] VALUES = Key.values();
             final IntSummaryStatistics STATS =
                     Arrays.stream(VALUES)
@@ -95,9 +105,9 @@ public final class Keyboard {
             ID_TO_KEY = new Key[STATS.getMax() + Key.OFFSET + 1];
             for (Key k : VALUES) {
                 Key.ID_TO_KEY[k.ID + Key.OFFSET] = k;
-                Optional<Button> buttonOptional = k.asButton();
+                Optional<Keyboard.Button> buttonOptional = k.asButton();
                 if (buttonOptional.isPresent()) {
-                    final Button b = buttonOptional.get();
+                    final Keyboard.Button b = buttonOptional.get();
                     Key.LOCAL_ID_TO_BUTTON.put(b.getLocalId(), b);
                 }
             }
@@ -112,7 +122,7 @@ public final class Keyboard {
         }
 
         private final int ID;
-        private final Keyboard.Button BUTTON;
+        private final Keyboard.AbstractButton BUTTON;
 
         Key(final int id) {
             if (id == GLFW.GLFW_KEY_UNKNOWN) {
@@ -122,7 +132,7 @@ public final class Keyboard {
 
             final int LOCAL_ID = GLFW.glfwGetKeyScancode(id);
             this.ID = id;
-            this.BUTTON = LOCAL_ID != -1 ? new Button() {
+            this.BUTTON = LOCAL_ID != -1 ? new Keyboard.AbstractButton() {
                 @Override
                 public Optional<String> getSymbol() {
                     return Key.this.getName();
@@ -134,14 +144,10 @@ public final class Keyboard {
                 }
 
                 @Override
-                public InstantEvent instantEvent(State triggerState) {
-                    throw new UnsupportedOperationException();
-                }
-
-                @Override
-                public State getState() {
+                public Button.State getState() {
                     return (GLFW.glfwGetKey(GLFW.glfwGetCurrentContext(), id) ==
-                            GLFW.GLFW_PRESS) ? State.PRESSED : State.RELEASED;
+                            GLFW.GLFW_PRESS) ? Button.State.PRESSED :
+                                               Button.State.RELEASED;
                 }
             } : null;
         }
@@ -150,7 +156,7 @@ public final class Keyboard {
             return this.BUTTON != null;
         }
 
-        public Optional<Button> asButton() {
+        public Optional<Keyboard.Button> asButton() {
             return Optional.ofNullable(this.BUTTON);
         }
 
@@ -161,26 +167,62 @@ public final class Keyboard {
     }
 
     public interface Button extends moonkeki.app.input.Button {
+        static Keyboard.Button fromLocalId(int localId) {
+            Keyboard.Button button = Key.LOCAL_ID_TO_BUTTON.get(localId);
+            if (button != null) {
+                return button;
+            }
+
+            return Keyboard.LOCAL_BUTTONS.computeIfAbsent(localId,
+                                                          LocalButton::new);
+        }
+
         Optional<String> getSymbol();
         int getLocalId();
     }
 
-    private static final class LocalButton implements Button {
-        final int LOCAL_ID;
-        volatile State state;
+    private static abstract class AbstractButton implements Keyboard.Button {
+        final Map<Button.State, Event.Signal> EVENT_SIGNALS =
+                new EnumMap<>(Map.of(Button.State.RELEASED, new Event.Signal(),
+                                     Button.State.PRESSED, new Event.Signal()));
+        final Map<Button.State, InstantEvent.Signal> INSTANT_EVENT_SIGNALS =
+                new EnumMap<>(Map.of(Button.State.RELEASED,
+                                     new InstantEvent.Signal(),
+                                     Button.State.PRESSED,
+                                     new InstantEvent.Signal()));
 
-        LocalButton(int localId, State state) {
+        @Override
+        public Event.Hub eventHub(State triggerState) {
+            return this.EVENT_SIGNALS.get(triggerState).getHub();
+        }
+
+        @Override
+        public InstantEvent.Hub instantEventHub(State triggerState) {
+            return this.INSTANT_EVENT_SIGNALS.get(triggerState).getHub();
+        }
+
+        void registerEvent(Button.State state, Instant timestamp) {
+            this.INSTANT_EVENT_SIGNALS.get(state).triggerElseNow(timestamp);
+            this.EVENT_SIGNALS.get(state).trigger();
+        }
+    }
+
+    //A Button that is not in Key enum
+    private static final class LocalButton extends Keyboard.AbstractButton {
+        final int LOCAL_ID;
+        volatile Button.State state;
+
+        LocalButton(int localId) {
+            this(localId, Button.State.RELEASED);
+        }
+
+        LocalButton(int localId, Button.State state) {
             this.LOCAL_ID = localId;
             this.state = Objects.requireNonNull(state);
         }
 
         @Override
-        public InstantEvent instantEvent(State triggerState) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public State getState() {
+        public Button.State getState() {
             return this.state;
         }
 
@@ -195,10 +237,20 @@ public final class Keyboard {
             return this.LOCAL_ID;
         }
 
-        void setState(State state) {
+        @Override
+        void registerEvent(State state, Instant timestamp) {
+            this.state = state;
+            super.registerEvent(state, timestamp);
+        }
+
+        @Deprecated
+        void setState(Button.State state) {
             this.state = Objects.requireNonNull(state);
         }
     }
+
+    private static Map<Integer, LocalButton> LOCAL_BUTTONS =
+            new ConcurrentHashMap<>();
 
     static {
         GLFW.glfwSetKeyCallback(GLFW.glfwGetCurrentContext(),
@@ -207,7 +259,19 @@ public final class Keyboard {
 
     private static void processEvent(long window, int key, int scancode,
                                      int action, int mods) {
-        throw new UnsupportedOperationException();
+        final Instant TIMESTAMP = Instant.now();
+        final Button.State STATE;
+        switch (action) {
+            case GLFW.GLFW_PRESS -> STATE = Button.State.PRESSED;
+            case GLFW.GLFW_RELEASE -> STATE = Button.State.RELEASED;
+            default -> {return;}
+        }
+
+        final AbstractButton BUTTON = (key != GLFW.GLFW_KEY_UNKNOWN) ?
+                Key.fromId(key).get().BUTTON :
+                Keyboard.LOCAL_BUTTONS.computeIfAbsent(scancode,
+                        s -> new LocalButton(s, STATE));
+        BUTTON.registerEvent(STATE, TIMESTAMP);
     }
 
     private Keyboard() {
