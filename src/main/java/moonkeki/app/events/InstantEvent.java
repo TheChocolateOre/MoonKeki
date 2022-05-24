@@ -284,6 +284,7 @@ public interface InstantEvent extends Event {
         //only of positive capacity
         private final Set<AbstractInstantEvent> EVENTS = new LinkedHashSet<>();
         private final Set<Listener> LISTENERS = new LinkedHashSet<>();
+        //Irrelevant when both EVENTS and LISTENERS Set's' are empty
         private Instant lastTimestamp;
         private volatile boolean closed;
         private final Hub HUB = new Hub() {
@@ -315,6 +316,10 @@ public interface InstantEvent extends Event {
                     return;
                 }
 
+                if (this.EVENTS.isEmpty() && this.LISTENERS.isEmpty()) {
+                    return;
+                }
+
                 this.lastTimestamp = Instant.now();
                 this.forwardLastTimestamp();
             } finally {
@@ -326,6 +331,10 @@ public interface InstantEvent extends Event {
             this.LOCK.lock();
             try {
                 if (this.closed) {
+                    return;
+                }
+
+                if (this.EVENTS.isEmpty() && this.LISTENERS.isEmpty()) {
                     return;
                 }
 
@@ -343,6 +352,10 @@ public interface InstantEvent extends Event {
             this.LOCK.lock();
             try {
                 if (this.closed) {
+                    return;
+                }
+
+                if (this.EVENTS.isEmpty() && this.LISTENERS.isEmpty()) {
                     return;
                 }
 
