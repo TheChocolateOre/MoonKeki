@@ -1,6 +1,7 @@
 package moonkeki.app.events;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -55,7 +56,7 @@ public interface Event {
             //If null, this Event is disconnected, otherwise this Signal won't
             //be closed (it could be closing, but that's not a problem)
             volatile Signal signal;
-            volatile boolean occurred;
+            final AtomicBoolean OCCURRED = new AtomicBoolean();
 
             //signal can't be null
             EventImpl(Signal signal) {
@@ -64,7 +65,7 @@ public interface Event {
 
             @Override
             public boolean hasOccurred() {
-                return this.occurred;
+                return this.OCCURRED.getAndSet(false);
             }
 
             public Event toClean() {
@@ -75,7 +76,7 @@ public interface Event {
 
             @Override
             public void clear() {
-                this.occurred = false;
+                this.OCCURRED.set(false);
             }
 
             @Override
@@ -135,7 +136,7 @@ public interface Event {
                     return;
                 }
 
-                this.EVENTS.forEach(e -> e.occurred = true);
+                this.EVENTS.forEach(e -> e.OCCURRED.set(true));
                 this.LISTENERS.forEach(Listener::onTrigger);
             } finally {
                 this.LOCK.unlock();
