@@ -1,7 +1,7 @@
 package moonkeki.app.input;
 
 import moonkeki.app.events.Event;
-import moonkeki.app.events.InstantEvent;
+import moonkeki.app.events.InstantEventQueue;
 import org.lwjgl.glfw.GLFW;
 
 import java.time.Instant;
@@ -153,10 +153,10 @@ public final class Keyboard {
         }
 
         @Override
-        public InstantEvent.Hub instantEventHub(State triggerState) {
+        public InstantEventQueue.Hub instantEventHub(State triggerState) {
             return this.ABSTRACT_BUTTON != null ?
                    this.ABSTRACT_BUTTON.instantEventHub(triggerState) :
-                   InstantEvent.Hub.EMPTY;
+                   InstantEventQueue.Hub.EMPTY;
         }
 
         @Override
@@ -201,11 +201,12 @@ public final class Keyboard {
         final Map<Button.State, Event.Signal> EVENT_SIGNALS =
                 new EnumMap<>(Map.of(Button.State.RELEASED, new Event.Signal(),
                                      Button.State.PRESSED, new Event.Signal()));
-        final Map<Button.State, InstantEvent.Signal> INSTANT_EVENT_SIGNALS =
+        final Map<Button.State, InstantEventQueue.Signal>
+                INSTANT_EVENT_QUEUE_SIGNALS =
                 new EnumMap<>(Map.of(Button.State.RELEASED,
-                                     new InstantEvent.Signal(),
+                                     new InstantEventQueue.Signal(),
                                      Button.State.PRESSED,
-                                     new InstantEvent.Signal()));
+                                     new InstantEventQueue.Signal()));
 
         @Override
         public Event.Hub eventHub(State triggerState) {
@@ -213,13 +214,15 @@ public final class Keyboard {
         }
 
         @Override
-        public InstantEvent.Hub instantEventHub(State triggerState) {
-            return this.INSTANT_EVENT_SIGNALS.get(triggerState).getHub();
+        public InstantEventQueue.Hub instantEventHub(State triggerState) {
+            return this.INSTANT_EVENT_QUEUE_SIGNALS.get(triggerState).getHub();
         }
 
         void registerEvent(Button.State state, Instant timestamp) {
-            this.INSTANT_EVENT_SIGNALS.get(state).triggerElseNow(timestamp);
-            this.EVENT_SIGNALS.get(state).trigger();
+            this.INSTANT_EVENT_QUEUE_SIGNALS.get(state)
+                                            .triggerElseNow(timestamp);
+            this.EVENT_SIGNALS.get(state)
+                              .trigger();
         }
     }
 

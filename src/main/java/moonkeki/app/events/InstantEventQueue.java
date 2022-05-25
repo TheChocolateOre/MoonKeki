@@ -7,29 +7,12 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
-public interface InstantEvent extends Event {
+public interface InstantEventQueue extends Event {
 
     interface Builder {
-        //Convenience for ofCapacity(1) & replacementRule(NONE)
-        default InstantEvent singletonLeastRecent() {
-            return this.ofCapacity(1)
-                       .ofReplacementRule(ReplacementRule.NONE)
-                       .build();
-        }
-
-        //Convenience for ofCapacity(1) & replacementRule(LEAST_RECENT)
-        default InstantEvent singletonMostRecent() {
-            return this.ofCapacity(1)
-                       .ofReplacementRule(ReplacementRule.LEAST_RECENT)
-                       .build();
-        }
-
-        //ofCapacity(+inf) & replacementRule(NONE). Throws if too much for the
-        //underlying collection
-        InstantEvent unbounded();
         Builder ofCapacity(int capacity);
         Builder ofReplacementRule(ReplacementRule replacementRule);
-        InstantEvent build();
+        InstantEventQueue build();
     }
 
     interface Listener {
@@ -80,24 +63,31 @@ public interface InstantEvent extends Event {
             });
 
             return new Hub.Closeable() {
+                final Hub HUB = SIGNAL.HUB;
+
                 @Override
                 public boolean attachListener(Listener listener) {
-                    return SIGNAL.attachListener(listener);
+                    return this.HUB.attachListener(listener);
                 }
 
                 @Override
                 public void detachListener(Listener listener) {
-                    SIGNAL.detachListener(listener);
+                    this.HUB.detachListener(listener);
+                }
+
+                @Override
+                public InstantEventQueue unbounded() {
+                    return this.HUB.unbounded();
                 }
 
                 @Override
                 public Builder eventBuilder() {
-                    return SIGNAL.eventBuilder();
+                    return this.HUB.eventBuilder();
                 }
 
                 @Override
                 public ClosureState getClosureState() {
-                    return SIGNAL.getClosureState();
+                    return this.HUB.getClosureState();
                 }
 
                 @Override
@@ -162,8 +152,29 @@ public interface InstantEvent extends Event {
             public void detachListener(Listener listener) {}
 
             @Override
+            public InstantEventQueue unbounded() {
+                return InstantEventQueue.EMPTY;
+            }
+
+            @Override
             public Builder eventBuilder() {
-                return InstantEvent.EMPTY.cleanBuilder();
+                return new Builder() {
+                    @Override
+                    public Builder ofCapacity(int capacity) {
+                        return this;
+                    }
+
+                    @Override
+                    public Builder ofReplacementRule(ReplacementRule
+                                                     replacementRule) {
+                        return this;
+                    }
+
+                    @Override
+                    public InstantEventQueue build() {
+                        return InstantEventQueue.EMPTY;
+                    }
+                };
             }
 
             @Override
@@ -180,24 +191,43 @@ public interface InstantEvent extends Event {
             }
         };
 
+        //Builder convenience for ofCapacity(1) & replacementRule(NONE)
+        default InstantEventQueue singletonLeastRecent() {
+            return this.eventBuilder()
+                       .ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.NONE)
+                       .build();
+        }
+
+        //Builder convenience for ofCapacity(1) & replacementRule(LEAST_RECENT)
+        default InstantEventQueue singletonMostRecent() {
+            return this.eventBuilder()
+                       .ofCapacity(1)
+                       .ofReplacementRule(ReplacementRule.LEAST_RECENT)
+                       .build();
+        }
+
         //false if this Hub is closed, otherwise true
         boolean attachListener(Listener listener);
         void detachListener(Listener listener);
+        //ofCapacity(+inf) & replacementRule(NONE). Throws if too much for the
+        //underlying collection
+        InstantEventQueue unbounded();
         Builder eventBuilder();
         ClosureState getClosureState();
     }
 
     final class Signal implements AutoCloseable {
         private static abstract class AbstractInstantEvent implements
-                                                           InstantEvent {
+                InstantEventQueue {
             final Lock LOCK = new ReentrantLock(true);
             //If null, this InstantEvent is disconnected, otherwise this Signal
             //won't be closed (it could be closing, but that's not a problem)
-            volatile InstantEvent.Signal signal;
+            volatile InstantEventQueue.Signal signal;
             Deque<Instant> timestamps = new LinkedList<>();
 
             //signal can't be null
-            AbstractInstantEvent(InstantEvent.Signal signal) {
+            AbstractInstantEvent(InstantEventQueue.Signal signal) {
                 this.signal = Objects.requireNonNull(signal);
             }
 
@@ -239,10 +269,6 @@ public interface InstantEvent extends Event {
                 }
             }
 
-            public InstantEvent toClean() {
-                return this.cleanBuilder().build();
-            }
-
             @Override
             public void clear() {
                 this.LOCK.lock();
@@ -261,7 +287,7 @@ public interface InstantEvent extends Event {
 
             @Override
             public void disconnect() {
-                final InstantEvent.Signal SIGNAL = this.signal;
+                final InstantEventQueue.Signal SIGNAL = this.signal;
                 if (SIGNAL == null) {
                     return;
                 }
@@ -296,6 +322,34 @@ public interface InstantEvent extends Event {
             @Override
             public void detachListener(Listener listener) {
                 Signal.this.detachListener(listener);
+            }
+
+            @Override
+            public InstantEventQueue unbounded() {
+                Signal.this.LOCK.lock();
+                try {
+                    if (Signal.this.closed) {
+                        return InstantEventQueue.EMPTY;
+                    }
+
+                    final AbstractInstantEvent EVENT =
+                            new AbstractInstantEvent(Signal.this) {
+                                @Override
+                                void add(Instant timestamp) {
+                                    this.LOCK.lock();
+                                    try {
+                                        this.timestamps.add(timestamp);
+                                    } finally {
+                                        this.LOCK.unlock();
+                                    }
+                                }
+                            };
+
+                    Signal.this.EVENTS.add(EVENT);
+                    return EVENT;
+                } finally {
+                    Signal.this.LOCK.unlock();
+                }
             }
 
             @Override
@@ -428,88 +482,15 @@ public interface InstantEvent extends Event {
             }
         }
 
-        private InstantEvent.Builder eventBuilder() {
+        private InstantEventQueue.Builder eventBuilder() {
             //for performance reasons, does not impact correctness
             if (this.closed) {
-                return InstantEvent.EMPTY.cleanBuilder();
+                return Hub.EMPTY.eventBuilder();
             }
 
             return new Builder() {
                 Integer capacity; //if null, unbounded (the default)
                 ReplacementRule replacementRule = ReplacementRule.NONE;
-
-                @Override
-                public InstantEvent unbounded() {
-                    Signal.this.LOCK.lock();
-                    try {
-                        if (Signal.this.closed) {
-                            return InstantEvent.EMPTY;
-                        }
-
-                        final AbstractInstantEvent EVENT =
-                          new AbstractInstantEvent(Signal.this) {
-                            @Override
-                            public Builder cleanBuilder() {
-                                final Signal SIGNAL = this.signal;
-                                if (SIGNAL == null) {
-                                    return InstantEvent.EMPTY.cleanBuilder();
-                                }
-
-                                return new Builder() {
-                                    final Builder BUILDER =
-                                            SIGNAL.eventBuilder()
-                                            .ofCapacity(Integer.MAX_VALUE)
-                                            .ofReplacementRule(
-                                               ReplacementRule.NONE);
-                                    boolean dirty;
-
-                                    @Override
-                                    public InstantEvent unbounded() {
-                                        return this.BUILDER.unbounded();
-                                    }
-
-                                    @Override
-                                    public Builder ofCapacity(int capacity) {
-                                        this.BUILDER.ofCapacity(capacity);
-                                        this.dirty = true;
-                                        return this;
-                                    }
-
-                                    @Override
-                                    public Builder ofReplacementRule(
-                                     ReplacementRule replacementRule) {
-                                        this.BUILDER
-                                            .ofReplacementRule(replacementRule);
-                                        this.dirty = true;
-                                        return this;
-                                    }
-
-                                    @Override
-                                    public InstantEvent build() {
-                                        return this.dirty ?
-                                               this.BUILDER.build() :
-                                               this.BUILDER.unbounded();
-                                    }
-                                };
-                            }
-
-                            @Override
-                            void add(Instant timestamp) {
-                                this.LOCK.lock();
-                                try {
-                                    this.timestamps.add(timestamp);
-                                } finally {
-                                    this.LOCK.unlock();
-                                }
-                            }
-                        };
-
-                        Signal.this.EVENTS.add(EVENT);
-                        return EVENT;
-                    } finally {
-                        Signal.this.LOCK.unlock();
-                    }
-                }
 
                 @Override
                 public Builder ofCapacity(int capacity) {
@@ -531,19 +512,19 @@ public interface InstantEvent extends Event {
                 }
 
                 @Override
-                public InstantEvent build() {
+                public InstantEventQueue build() {
                     if (null == this.capacity) {
-                        return this.unbounded();
+                        return Signal.this.HUB.unbounded();
                     }
 
                     if (0 == this.capacity) {
-                        return InstantEvent.EMPTY;
+                        return InstantEventQueue.EMPTY;
                     }
 
                     Signal.this.LOCK.lock();
                     try {
                         if (Signal.this.closed) {
-                            return InstantEvent.EMPTY;
+                            return InstantEventQueue.EMPTY;
                         }
 
                         final int CAPACITY = this.capacity;
@@ -552,20 +533,6 @@ public interface InstantEvent extends Event {
                         final AbstractInstantEvent EVENT =
                                 switch (REPLACEMENT_RULE) {
                             case NONE -> new AbstractInstantEvent(Signal.this) {
-                                @Override
-                                public Builder cleanBuilder() {
-                                    final Signal SIGNAL = this.signal;
-                                    if (SIGNAL == null) {
-                                        return InstantEvent.EMPTY
-                                                           .cleanBuilder();
-                                    }
-
-                                    return SIGNAL.eventBuilder()
-                                                 .ofCapacity(CAPACITY)
-                                                 .ofReplacementRule(
-                                                  ReplacementRule.NONE);
-                                }
-
                                 @Override
                                 void add(Instant timestamp) {
                                     this.LOCK.lock();
@@ -582,20 +549,6 @@ public interface InstantEvent extends Event {
                             };
                             case LEAST_RECENT -> new AbstractInstantEvent(
                                     Signal.this) {
-                                @Override
-                                public Builder cleanBuilder() {
-                                    final Signal SIGNAL = this.signal;
-                                    if (SIGNAL == null) {
-                                        return InstantEvent.EMPTY
-                                                           .cleanBuilder();
-                                    }
-
-                                    return SIGNAL.eventBuilder()
-                                                 .ofCapacity(CAPACITY)
-                                                 .ofReplacementRule(
-                                                  ReplacementRule.LEAST_RECENT);
-                                }
-
                                 @Override
                                 void add(Instant timestamp) {
                                     this.LOCK.lock();
@@ -629,7 +582,7 @@ public interface InstantEvent extends Event {
         }
     }
 
-    InstantEvent EMPTY = new InstantEvent() {
+    InstantEventQueue EMPTY = new InstantEventQueue() {
         @Override
         public boolean hasOccurred() {
             return false;
@@ -638,47 +591,6 @@ public interface InstantEvent extends Event {
         @Override
         public Snapshot snapshot() {
             return Snapshot.EMPTY;
-        }
-
-        @Override
-        public InstantEvent toClean() {
-            return this;
-        }
-
-        @Override
-        public InstantEvent.Builder cleanBuilder() {
-            return new Builder() {
-                @Override
-                public InstantEvent singletonLeastRecent() {
-                    return InstantEvent.EMPTY;
-                }
-
-                @Override
-                public InstantEvent singletonMostRecent() {
-                    return InstantEvent.EMPTY;
-                }
-
-                @Override
-                public InstantEvent unbounded() {
-                    return InstantEvent.EMPTY;
-                }
-
-                @Override
-                public Builder ofCapacity(int capacity) {
-                    return this;
-                }
-
-                @Override
-                public Builder ofReplacementRule(ReplacementRule
-                                                 replacementRule) {
-                    return this;
-                }
-
-                @Override
-                public InstantEvent build() {
-                    return InstantEvent.EMPTY;
-                }
-            };
         }
 
         @Override
@@ -702,10 +614,5 @@ public interface InstantEvent extends Event {
     }
 
     Snapshot snapshot();
-    InstantEvent toClean();
-    InstantEvent.Builder cleanBuilder();
-    void clear();
-    ConnectionState getConnectionState();
-    void disconnect();
 
 }

@@ -52,7 +52,7 @@ public interface Event {
     }
 
     final class Signal implements AutoCloseable {
-        private static class EventImpl implements Event {
+        private static final class EventImpl implements Event {
             //If null, this Event is disconnected, otherwise this Signal won't
             //be closed (it could be closing, but that's not a problem)
             volatile Signal signal;
@@ -66,12 +66,6 @@ public interface Event {
             @Override
             public boolean hasOccurred() {
                 return this.OCCURRED.getAndSet(false);
-            }
-
-            public Event toClean() {
-                return Optional.ofNullable(this.signal)
-                               .map(Signal::event)
-                               .orElse(Event.EMPTY);
             }
 
             @Override
@@ -220,9 +214,6 @@ public interface Event {
         public boolean hasOccurred() {return false;}
 
         @Override
-        public Event toClean() {return this;}
-
-        @Override
         public void clear() {}
 
         @Override
@@ -240,7 +231,6 @@ public interface Event {
     };
 
     boolean hasOccurred(); //Destructive
-    Event toClean();
     void clear();
     ConnectionState getConnectionState();
     void disconnect();
