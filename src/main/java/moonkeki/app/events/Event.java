@@ -2,6 +2,7 @@ package moonkeki.app.events;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -209,6 +210,78 @@ public interface Event {
         }
     }
 
+    final class CompositeORBuilder {
+        private final Set<Event.Hub> HUBS = new HashSet<>();
+
+        private CompositeORBuilder() {}
+
+        public Event.CompositeORBuilder add(Event.Hub hub) {
+            if (hub.getClosureState() == ClosureState.UNDETERMINED) {
+                this.HUBS.add(hub);
+            }
+            return this;
+        }
+
+        public Event.Hub.Closeable build() {
+            if (this.HUBS.isEmpty()) {
+                return Event.Hub.EMPTY;
+            }
+
+            final Event.Signal SIGNAL = new Signal();
+            final AtomicInteger COUNTER = new AtomicInteger(this.HUBS.size());
+            final Runnable DECREMENT = () -> {
+                if (COUNTER.decrementAndGet() == 0) {
+                    SIGNAL.close();
+                }
+            };
+            this.HUBS.forEach(h -> {
+                Event.Listener LISTENER = new Event.Listener() {
+                    @Override
+                    public void onTrigger() {
+                        SIGNAL.trigger();
+                    }
+
+                    @Override
+                    public void onClose() {
+                        DECREMENT.run();
+                    }
+                };
+                if (!h.attachListener(LISTENER)) {
+                    DECREMENT.run();
+                }
+            });
+
+            return new Event.Hub.Closeable() {
+                final Event.Hub HUB = SIGNAL.HUB;
+
+                @Override
+                public boolean attachListener(Event.Listener listener) {
+                    return this.HUB.attachListener(listener);
+                }
+
+                @Override
+                public void detachListener(Event.Listener listener) {
+                    this.HUB.detachListener(listener);
+                }
+
+                @Override
+                public Event event() {
+                    return this.HUB.event();
+                }
+
+                @Override
+                public ClosureState getClosureState() {
+                    return this.HUB.getClosureState();
+                }
+
+                @Override
+                public void close() {
+                    SIGNAL.close();
+                }
+            };
+        }
+    }
+
     Event EMPTY = new Event() {
         @Override
         public boolean hasOccurred() {return false;}
@@ -229,6 +302,10 @@ public interface Event {
             return "Event.EMPTY";
         }
     };
+
+    static CompositeORBuilder compositeOR() {
+        return new CompositeORBuilder();
+    }
 
     boolean hasOccurred(); //Destructive
     void clear();
