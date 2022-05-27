@@ -200,7 +200,21 @@ Important! Don't use any class unless the .build() in the above code has been
 called! Keep in mind that the `render` package is more mature than the `app`.
 
 ### How to process input?
-As of now, you can't. An input system is on the works.
+Keyboard input is now supported. You can check if a button is being pressed 
+with:
+```java
+Keyboard.Key.X.isPressed();
+```
+Creating an event for a keyboard button press:
+```java
+Event xPress = Keyboard.Key.X
+                           .eventHub(Button.State.PRESSED)
+                           .event();
+if (xPress.hasOccurred()) {
+    //The X button was pressed    
+}
+```
+Mouse, gamepad, etc. are on the works.
 
 ### How to leave feedback?
 You can open an issue or engage in the GitHub Discussions.
