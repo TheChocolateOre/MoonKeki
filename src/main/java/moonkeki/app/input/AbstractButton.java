@@ -9,14 +9,16 @@ import java.util.Map;
 
 abstract class AbstractButton implements Button {
     private final Map<State, Event.Signal> EVENT_SIGNALS =
-            new EnumMap<>(Map.of(Keyboard.Button.State.RELEASED, new Event.Signal(),
-                    Keyboard.Button.State.PRESSED, new Event.Signal()));
+            new EnumMap<>(Map.of(Keyboard.Button.State.RELEASED,
+                                 new Event.Signal(),
+                                 Keyboard.Button.State.PRESSED,
+                                 new Event.Signal()));
     private final Map<Keyboard.Button.State, InstantEventQueue.Signal>
             INSTANT_EVENT_QUEUE_SIGNALS =
             new EnumMap<>(Map.of(Keyboard.Button.State.RELEASED,
-                    new InstantEventQueue.Signal(),
-                    Keyboard.Button.State.PRESSED,
-                    new InstantEventQueue.Signal()));
+                                 new InstantEventQueue.Signal(),
+                                 Keyboard.Button.State.PRESSED,
+                                 new InstantEventQueue.Signal()));
 
     @Override
     public Event.Hub eventHub(State triggerState) {
@@ -30,8 +32,8 @@ abstract class AbstractButton implements Button {
 
     void registerEvent(Keyboard.Button.State state, Instant timestamp) {
         this.INSTANT_EVENT_QUEUE_SIGNALS.get(state)
-                .triggerElseNow(timestamp);
+                                        .triggerElseNow(timestamp);
         this.EVENT_SIGNALS.get(state)
-                .trigger();
+                          .trigger();
     }
 }
