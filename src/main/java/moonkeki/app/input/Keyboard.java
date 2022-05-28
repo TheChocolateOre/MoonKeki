@@ -103,7 +103,7 @@ public final class Keyboard {
             for (Key k : VALUES) {
                 Key.ID_TO_KEY[k.ID + Key.OFFSET] = k;
                 if (k.exists()) {
-                    Key.LOCAL_ID_TO_BUTTON.put(k.LOCAL_ID, k.ABSTRACT_BUTTON);
+                    Key.LOCAL_ID_TO_BUTTON.put(k.LOCAL_ID, k);
                 }
             }
         }
@@ -116,7 +116,7 @@ public final class Keyboard {
 
         private final int ID;
         private final int LOCAL_ID;
-        private final Keyboard.AbstractButton ABSTRACT_BUTTON;
+        private final AbstractButton ABSTRACT_BUTTON;
 
         Key(final int id) {
             if (id == GLFW.GLFW_KEY_UNKNOWN) {
@@ -128,16 +128,6 @@ public final class Keyboard {
             this.LOCAL_ID = GLFW.glfwGetKeyScancode(id);
 
             this.ABSTRACT_BUTTON = LOCAL_ID != -1 ? new AbstractButton() {
-                @Override
-                public Optional<String> getSymbol() {
-                    return Key.this.getSymbol();
-                }
-
-                @Override
-                public OptionalInt getLocalId() {
-                    return Key.this.getLocalId();
-                }
-
                 @Override
                 public Button.State getState() {
                     return Key.this.getState();
@@ -153,9 +143,9 @@ public final class Keyboard {
         }
 
         @Override
-        public InstantEventQueue.Hub instantEventHub(State triggerState) {
+        public InstantEventQueue.Hub instantEventQueueHub(State triggerState) {
             return this.ABSTRACT_BUTTON != null ?
-                   this.ABSTRACT_BUTTON.instantEventHub(triggerState) :
+                   this.ABSTRACT_BUTTON.instantEventQueueHub(triggerState) :
                    InstantEventQueue.Hub.EMPTY;
         }
 
@@ -197,37 +187,8 @@ public final class Keyboard {
         OptionalInt getLocalId();
     }
 
-    private static abstract class AbstractButton implements Keyboard.Button {
-        final Map<Button.State, Event.Signal> EVENT_SIGNALS =
-                new EnumMap<>(Map.of(Button.State.RELEASED, new Event.Signal(),
-                                     Button.State.PRESSED, new Event.Signal()));
-        final Map<Button.State, InstantEventQueue.Signal>
-                INSTANT_EVENT_QUEUE_SIGNALS =
-                new EnumMap<>(Map.of(Button.State.RELEASED,
-                                     new InstantEventQueue.Signal(),
-                                     Button.State.PRESSED,
-                                     new InstantEventQueue.Signal()));
-
-        @Override
-        public Event.Hub eventHub(State triggerState) {
-            return this.EVENT_SIGNALS.get(triggerState).getHub();
-        }
-
-        @Override
-        public InstantEventQueue.Hub instantEventHub(State triggerState) {
-            return this.INSTANT_EVENT_QUEUE_SIGNALS.get(triggerState).getHub();
-        }
-
-        void registerEvent(Button.State state, Instant timestamp) {
-            this.INSTANT_EVENT_QUEUE_SIGNALS.get(state)
-                                            .triggerElseNow(timestamp);
-            this.EVENT_SIGNALS.get(state)
-                              .trigger();
-        }
-    }
-
     //A Button that is not in Key enum
-    private static final class LocalButton extends Keyboard.AbstractButton {
+    private static final class LocalButton extends AbstractButton implements Keyboard.Button {
         final int LOCAL_ID;
         volatile Button.State state;
 

@@ -11,7 +11,7 @@ public interface Button {
     default boolean isReleased() {return this.getState() == State.RELEASED;}
 
     Event.Hub eventHub(State triggerState);
-    InstantEventQueue.Hub instantEventHub(State triggerState);
+    InstantEventQueue.Hub instantEventQueueHub(State triggerState);
     State getState();
 
 }
