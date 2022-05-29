@@ -214,7 +214,16 @@ if (xPress.hasOccurred()) {
     //The X button was pressed    
 }
 ```
-Mouse, gamepad, etc. are on the works.
+The mouse story is similar:
+```java
+Event leftPress = Mouse.Button.LEFT
+                              .eventHub(Button.State.PRESSED)
+                              .event();
+if (leftPress.hasOccurred()) {
+    //The left mouse button was pressed    
+}
+```
+Controller, gamepad, etc. coming soon.
 
 ### How to leave feedback?
 You can open an issue or engage in the GitHub Discussions.
