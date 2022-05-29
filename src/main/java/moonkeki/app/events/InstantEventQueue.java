@@ -21,12 +21,12 @@ public interface InstantEventQueue extends Event {
         void onClose();
     }
 
-    final class CompositeORBuilder {
+    final class CompositeBuilder {
         private final Set<Hub> HUBS = new HashSet<>();
 
-        private CompositeORBuilder() {}
+        private CompositeBuilder() {}
 
-        public CompositeORBuilder add(Hub hub) {
+        public CompositeBuilder add(Hub hub) {
             if (hub.getClosureState() == ClosureState.UNDETERMINED) {
                 this.HUBS.add(hub);
             }
@@ -609,8 +609,8 @@ public interface InstantEventQueue extends Event {
             return "InstantEvent.EMPTY";
         }
     };
-    static CompositeORBuilder compositeOR() {
-        return new CompositeORBuilder();
+    static CompositeBuilder compositeOR() {
+        return new CompositeBuilder();
     }
 
     Snapshot snapshot();

@@ -207,18 +207,16 @@ Keyboard.Key.X.isPressed();
 ```
 Creating an event for a keyboard button press:
 ```java
-Event xPress = Keyboard.Key.X
-                           .eventHub(Button.State.PRESSED)
-                           .event();
+Event xPress = Keyboard.Key.X.eventHub(Button.State.PRESSED)
+                             .event();
 if (xPress.hasOccurred()) {
     //The X button was pressed    
 }
 ```
 The mouse story is similar:
 ```java
-Event leftPress = Mouse.Button.LEFT
-                              .eventHub(Button.State.PRESSED)
-                              .event();
+Event leftPress = Mouse.Button.LEFT.eventHub(Button.State.PRESSED)
+                                   .event();
 if (leftPress.hasOccurred()) {
     //The left mouse button was pressed    
 }
