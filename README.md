@@ -1,8 +1,10 @@
 # MoonKeki
 A 2D game development framework with OpenGL backend, written in Java.
 
-**Attention!** This is work in progress. The API might and is very likely to
-change substantially. Tests are absent or minimally performed.
+**Attention!** This is work in progress. Check what is currently being 
+[worked](https://github.com/TheChocolateOre/MoonKeki/projects/1).
+The API might and is very likely to change substantially. Tests are absent or 
+minimally performed.
 
 ___
 
