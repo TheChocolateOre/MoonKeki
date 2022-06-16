@@ -4,7 +4,11 @@ A 2D game development framework with OpenGL backend, written in Java.
 **Attention!** This is work in
 [progress](https://github.com/TheChocolateOre/MoonKeki/projects/1).
 The API might and is very likely to change substantially. Tests are absent or 
-minimally performed.
+minimally performed. That being said, the code in this repository compiles 
+(let's hope I didn't mess things up). I like to think of its development state
+as _stacking_, that is, it does basic stuff and with every commit we are adding
+more functionality. There will be a versioning available eventually 
+(e.g. 1.2.34), but as of now, in these early stages, it's absent.
 
 ___
 
@@ -158,7 +162,7 @@ way. One more of its fruits is
 write and reason about multithreaded programs.
 4. [Project Amber](https://openjdk.org/projects/amber/) increases productivity 
 and makes your code easier to read and maintain. Looking back on your old code,
-will leave with a _How did we code like that?_ expression.
+will leave you with a _How did we code like that?_ expression.
 5. [Lilliput](https://openjdk.org/projects/lilliput/) reduces memory footprint.
 6. [Leyden](https://openjdk.org/projects/leyden/) increases performance.
 
