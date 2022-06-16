@@ -123,7 +123,7 @@ Make your game in C++. It has similar syntax, no garbage collector, and it's
 actually easier to find bindings for OpenGL.
 
 Alright, so why this framework is written in Java then? Java's
-[ZGC](https://wiki.openjdk.java.net/display/zgc/Main) is the answer. ZGC stands
+[ZGC](https://wiki.openjdk.org/display/zgc/Main) is the answer. ZGC stands
 for **Z** **G**arbage **C**ollector, and it is a garbage collector that has 
 **max pause** times of **<1ms** (the actual number is around **200μs** (0.2ms)) 
 (a 60fps game spends 16.6ms on each frame) and **average** of around **30μs** 
@@ -137,15 +137,32 @@ as you please, use Java as it was meant to be used, not as a hack. Your game
 won't lag from the garbage collector.
 
 Ok, enough with the garbage collection, what else can Java offer for game
-development? I think Java's future is bright. Take a look at
-[Project Panama](https://openjdk.java.net/projects/panama/) and
-[Project Valhalla](https://openjdk.java.net/projects/valhalla/). I think those
-2 can positively impact game development with Java from the performance
-perspective, and there are even more interesting ones, like
-[Project Loom](https://openjdk.java.net/projects/loom/). And of course, lets not
-forget [Project Amber](https://openjdk.java.net/projects/amber/) which increases
-productivity and makes your code easier to read and maintain.
+development? I think Java's future is bright:
+1. [Project Panama](https://openjdk.org/projects/panama/) creates a nice bridge
+between _on-heap_ and _off-heap_, or _on-JVM_ and _off-JVM_. There are so many
+things (APIs) that are great or even vital for game development, but simply not 
+written in Java. Our dependencies here actually rely on such connections, 
+therefore this project could make its way there, possibly even improving 
+performance.
+2. [Project Valhalla](https://openjdk.org/projects/valhalla/) combats (among 
+other things) the long-lived argument that _Java is slow because everything is a
+reference, an indirection_. Users will be able to define their own 
+_value types_ that have a good chance of getting flattened in memory, keeping
+the cache hot.
+3. [Project Loom](https://openjdk.org/projects/loom/) transforms the use of
+threads into a better experience by making them 
+[lightweight](https://openjdk.org/jeps/425), so we can have them in the millions
+instead of few-thousands, effectively rendering thread pools obsolete along its 
+way. One more of its fruits is 
+[structured concurrency](https://openjdk.org/jeps/428), making it easier to 
+write and reason about multithreaded programs.
+4. [Project Amber](https://openjdk.org/projects/amber/) increases productivity 
+and makes your code easier to read and maintain. Looking back on your old code,
+will leave with a _How did we code like that?_ expression.
+5. [Lilliput](https://openjdk.org/projects/lilliput/) reduces memory footprint.
+6. [Leyden](https://openjdk.org/projects/leyden/) increases performance.
 
+And [many more!](https://openjdk.org/jeps/0)
 I like to think of Java as a **safe**, **powerful** with great **performance**
 language, that truly lives to its **general purpose** attribute. There is no
 reason why you shouldn't create games with Java.
@@ -229,7 +246,10 @@ Controller, gamepad, etc. coming soon.
 You can open an issue or engage in the GitHub Discussions.
 
 ### I created a game with this framework, how to deploy?
-The hard part is over, a few formalities left. What you need to be aiming for,
-is to package a .jar of your game alongside a JVM (don't forget to use ZGC).
-Take a look at [Packaging Tool](https://openjdk.java.net/jeps/392). That's all I
-can say for now. When I'll deploy my game, I'll let you know how I did it.
+The hard part is over, a few formalities left. What you need to be aiming for:
+- [Package](https://openjdk.org/jeps/392) a .jar of your game alongside a JVM.
+- Enable preview features.
+- Use ZGC (preferably). 
+
+That's all I can say for now. When I'll deploy my game, I'll let you know how I 
+did it.
