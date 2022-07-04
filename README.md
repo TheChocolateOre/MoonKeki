@@ -180,7 +180,7 @@ staying with the latest version.
 ### Will this software be backwards or forwards compatible with itself?
 Probably **no**. That is, let `a, b (a < b)` two versions of this software, then
 code written in version `a` **may** or **may not** run on version `b` and the 
-same holds for the other way around. A true hero would bite the bullet and take
+same holds the other way around. A true hero would bite the bullet and take
 responsibility to keep things compatible, but I don't like compromises on good
 design ideas, just to stay compatible. Although, effort will go towards
 deprecation before removal, and hopefully, dramatic changes won't happen
