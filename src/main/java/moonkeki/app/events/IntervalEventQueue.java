@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+@Deprecated
 public interface IntervalEventQueue extends Event {
 
     record Interval(Instant startIncluded, Instant endExcluded) {
