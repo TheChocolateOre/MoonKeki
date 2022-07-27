@@ -229,7 +229,7 @@ public final class Keyboard {
         }
     }
 
-    private static Map<Integer, LocalButton> LOCAL_BUTTONS =
+    private static final Map<Integer, LocalButton> LOCAL_BUTTONS =
             new ConcurrentHashMap<>();
 
     static {
