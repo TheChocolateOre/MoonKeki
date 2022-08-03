@@ -4,6 +4,8 @@ import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEventQueue;
 import org.lwjgl.glfw.GLFW;
 
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.IntSummaryStatistics;
@@ -11,6 +13,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class Mouse {
+
+    public record Position(double x, double y) {}
 
     public enum Button implements moonkeki.app.input.Button {
         LEFT(GLFW.GLFW_MOUSE_BUTTON_LEFT),
@@ -84,6 +88,41 @@ public final class Mouse {
     static {
         GLFW.glfwSetMouseButtonCallback(GLFW.glfwGetCurrentContext(),
                                         Mouse::processEvent);
+    }
+
+    //in framebuffer texels
+    public static Position getPosition() {
+        final double[] xCache = new double[1];
+        final double[] yCache = new double[1];
+        GLFW.glfwGetCursorPos(GLFW.glfwGetCurrentContext(), xCache, yCache);
+
+        AffineTransform transform = Mouse.screenToFramebufferTransform();
+        Point2D p = new Point2D.Double();
+        transform.transform(new Point2D.Double(xCache[0], yCache[0]), p);
+
+        return new Position(p.getX(), p.getY());
+    }
+
+    //screen coordinates -> framebuffer
+    private static AffineTransform screenToFramebufferTransform() {
+        int[] winWidthCache = new int[1];
+        int[] winHeightCache = new int[1];
+        int[] fbWidthCache = new int[1];
+        int[] fbHeightCache = new int[1];
+        GLFW.glfwGetWindowSize(GLFW.glfwGetCurrentContext(),
+                               winWidthCache,
+                               winHeightCache);
+        GLFW.glfwGetFramebufferSize(GLFW.glfwGetCurrentContext(),
+                                    fbWidthCache,
+                                    fbHeightCache);
+
+        AffineTransform transform = AffineTransform.getScaleInstance(
+                (double) fbWidthCache[0] / winWidthCache[0],
+                (double) fbHeightCache[0] / winHeightCache[0]);
+        transform.translate(0, winHeightCache[0]);
+        transform.scale(1.0, -1.0);
+
+        return transform;
     }
 
     private static void processEvent(long window, int buttonId, int action,
