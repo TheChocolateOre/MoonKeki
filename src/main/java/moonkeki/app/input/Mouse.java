@@ -1,5 +1,6 @@
 package moonkeki.app.input;
 
+import moonkeki.app.events.ClosureState;
 import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEventQueue;
 import org.lwjgl.glfw.GLFW;
@@ -7,9 +8,8 @@ import org.lwjgl.glfw.GLFW;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.IntSummaryStatistics;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 public final class Mouse {
@@ -85,9 +85,41 @@ public final class Mouse {
         }
     }
 
+    private static class PositionEventEntry {
+        final BiPredicate<Double, Double> PREDICATE;
+        // TODO trying to figure out how to close an event
+        final Event.Signal SIGNAL = new Event.Signal();
+        int index;
+        boolean occurredOnPrev;
+
+        PositionEventEntry(BiPredicate<Double, Double> predicate, int index) {
+            this.PREDICATE = predicate;
+            this.index = index;
+        }
+
+        synchronized void process(Position pos) {
+            if (!this.PREDICATE.test(pos.x, pos.y)) {
+                this.occurredOnPrev = false;
+                return;
+            }
+
+            if (this.occurredOnPrev) {
+                return;
+            }
+
+            this.SIGNAL.trigger();
+            this.occurredOnPrev = true;
+        }
+    }
+
+    private static final List<PositionEventEntry> POSITION_EVENT_ENTRIES =
+            new ArrayList<>();
+
     static {
         GLFW.glfwSetMouseButtonCallback(GLFW.glfwGetCurrentContext(),
-                                        Mouse::processEvent);
+                                        Mouse::processButtonEvent);
+        GLFW.glfwSetCursorPosCallback(GLFW.glfwGetCurrentContext(),
+                                      Mouse::processPositionEvent);
     }
 
     //in framebuffer texels
@@ -95,12 +127,49 @@ public final class Mouse {
         final double[] xCache = new double[1];
         final double[] yCache = new double[1];
         GLFW.glfwGetCursorPos(GLFW.glfwGetCurrentContext(), xCache, yCache);
+        return Mouse.screenToFramebufferPosition(xCache[0], yCache[0]);
+    }
 
-        AffineTransform transform = Mouse.screenToFramebufferTransform();
-        Point2D p = new Point2D.Double();
-        transform.transform(new Point2D.Double(xCache[0], yCache[0]), p);
+    public static Event.Hub.Closeable positionEventHub(
+            BiPredicate<Double, Double> positionPredicate) {
+        final List<PositionEventEntry> ENTRIES = Mouse.POSITION_EVENT_ENTRIES;
+        final PositionEventEntry ENTRY = new PositionEventEntry(
+                positionPredicate, ENTRIES.size());
+        ENTRIES.add(ENTRY);
+        return new Event.Hub.Closeable() {
+            @Override
+            public void close() {
+                if (ENTRY.SIGNAL.getClosureState() == ClosureState.CLOSED) {
+                    return;
+                }
 
-        return new Position(p.getX(), p.getY());
+                ENTRY.SIGNAL.close();
+                final int LAST_INDEX = ENTRIES.size() - 1;
+                Collections.swap(ENTRIES, ENTRY.index, LAST_INDEX);
+                ENTRIES.get(ENTRY.index).index = ENTRY.index;
+                ENTRIES.remove(LAST_INDEX);
+            }
+
+            @Override
+            public boolean attachListener(Event.Listener listener) {
+                return ENTRY.SIGNAL.getHub().attachListener(listener);
+            }
+
+            @Override
+            public void detachListener(Event.Listener listener) {
+                ENTRY.SIGNAL.getHub().detachListener(listener);
+            }
+
+            @Override
+            public Event event() {
+                return ENTRY.SIGNAL.getHub().event();
+            }
+
+            @Override
+            public ClosureState getClosureState() {
+                return ENTRY.SIGNAL.getHub().getClosureState();
+            }
+        };
     }
 
     //screen coordinates -> framebuffer
@@ -125,8 +194,8 @@ public final class Mouse {
         return transform;
     }
 
-    private static void processEvent(long window, int buttonId, int action,
-                                     int mods) {
+    private static void processButtonEvent(long window, int buttonId,
+                                           int action, int mods) {
         final Instant TIMESTAMP = Instant.now();
         final Button.State STATE;
         switch (action) {
@@ -138,6 +207,18 @@ public final class Mouse {
         Mouse.Button.fromId(buttonId)
                     .ABSTRACT_BUTTON
                     .registerEvent(STATE, TIMESTAMP);
+    }
+
+    private static void processPositionEvent(long window, double x, double y) {
+        final Position POS = Mouse.screenToFramebufferPosition(x, y);
+        Mouse.POSITION_EVENT_ENTRIES.forEach(e -> e.process(POS));
+    }
+
+    private static Position screenToFramebufferPosition(double x, double y) {
+        AffineTransform transform = Mouse.screenToFramebufferTransform();
+        Point2D p = new Point2D.Double();
+        transform.transform(new Point2D.Double(x, y), p);
+        return new Position(p.getX(), p.getY());
     }
 
     private Mouse() {
