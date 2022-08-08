@@ -85,19 +85,33 @@ public final class Mouse {
         }
     }
 
-    private static class PositionEventEntry {
+    private static abstract class AbstractPositionEventEntry implements
+            AutoCloseable {
         final BiPredicate<Double, Double> PREDICATE;
-        // TODO trying to figure out how to close an event
-        final Event.Signal SIGNAL = new Event.Signal();
-        int index;
+        int index; //can be -1 to indicate that it is closed/removed
         boolean occurredOnPrev;
 
-        PositionEventEntry(BiPredicate<Double, Double> predicate, int index) {
+        AbstractPositionEventEntry(BiPredicate<Double, Double> predicate,
+                                   int index) {
             this.PREDICATE = predicate;
             this.index = index;
         }
 
-        synchronized void process(Position pos) {
+        void remove() {
+            if (-1 == this.index) {
+                return;
+            }
+
+            final List<AbstractPositionEventEntry> ENTRIES = this.getEntries();
+            final int LAST_INDEX = ENTRIES.size() - 1;
+            Collections.swap(ENTRIES, this.index, LAST_INDEX);
+            ENTRIES.get(this.index).index = this.index;
+            ENTRIES.remove(LAST_INDEX);
+            this.index = -1;
+        }
+
+        //timestamp can be null
+        synchronized void process(Position pos, Instant timestamp) {
             if (!this.PREDICATE.test(pos.x, pos.y)) {
                 this.occurredOnPrev = false;
                 return;
@@ -107,19 +121,107 @@ public final class Mouse {
                 return;
             }
 
-            this.SIGNAL.trigger();
+            this.trigger(timestamp);
             this.occurredOnPrev = true;
+        }
+
+        //timestamp can be null
+        abstract void trigger(Instant timestamp);
+        abstract List<AbstractPositionEventEntry> getEntries();
+    }
+
+    private static final class PositionEventEntry extends
+            AbstractPositionEventEntry {
+        static final List<AbstractPositionEventEntry> ENTRIES =
+                new ArrayList<>();
+
+        static PositionEventEntry of(BiPredicate<Double, Double> predicate) {
+            final PositionEventEntry ENTRY = new PositionEventEntry(predicate,
+                    PositionEventEntry.ENTRIES.size());
+            PositionEventEntry.ENTRIES.add(ENTRY);
+            return ENTRY;
+        }
+
+        static void process(long window, double x, double y) {
+            final Position POS = Mouse.screenToFramebufferPosition(x, y);
+            PositionEventEntry.ENTRIES.forEach(e -> e.process(POS, null));
+        }
+
+        final Event.Signal SIGNAL = new Event.Signal();
+
+        PositionEventEntry(BiPredicate<Double, Double> predicate, int index) {
+            super(predicate, index);
+        }
+
+        @Override
+        public void close() {
+            this.SIGNAL.close();
+            this.remove();
+        }
+
+        @Override
+        void trigger(Instant timestamp) {
+            this.SIGNAL.trigger();
+        }
+
+        @Override
+        List<AbstractPositionEventEntry> getEntries() {
+            return PositionEventEntry.ENTRIES;
         }
     }
 
-    private static final List<PositionEventEntry> POSITION_EVENT_ENTRIES =
-            new ArrayList<>();
+    private static final class PositionInstantEventQueueEntry extends
+            AbstractPositionEventEntry {
+        static final List<AbstractPositionEventEntry> ENTRIES =
+                new ArrayList<>();
+
+        static PositionInstantEventQueueEntry of(
+                BiPredicate<Double, Double> predicate) {
+            final PositionInstantEventQueueEntry ENTRY =
+                    new PositionInstantEventQueueEntry(predicate,
+                    PositionInstantEventQueueEntry.ENTRIES.size());
+            PositionInstantEventQueueEntry.ENTRIES.add(ENTRY);
+            return ENTRY;
+        }
+
+        static void process(long window, double x, double y) {
+            final Instant NOW = Instant.now();
+            final Position POS = Mouse.screenToFramebufferPosition(x, y);
+            PositionInstantEventQueueEntry.ENTRIES.forEach(
+                    e -> e.process(POS, NOW));
+        }
+
+        final InstantEventQueue.Signal SIGNAL = new InstantEventQueue.Signal();
+
+        PositionInstantEventQueueEntry(BiPredicate<Double, Double> predicate,
+                                       int index) {
+            super(predicate, index);
+        }
+
+        @Override
+        public void close() {
+            this.SIGNAL.close();
+            this.remove();
+        }
+
+        @Override
+        void trigger(Instant timestamp) {
+            this.SIGNAL.triggerElseNow(timestamp);
+        }
+
+        @Override
+        List<AbstractPositionEventEntry> getEntries() {
+            return PositionInstantEventQueueEntry.ENTRIES;
+        }
+    }
 
     static {
         GLFW.glfwSetMouseButtonCallback(GLFW.glfwGetCurrentContext(),
                                         Mouse::processButtonEvent);
         GLFW.glfwSetCursorPosCallback(GLFW.glfwGetCurrentContext(),
-                                      Mouse::processPositionEvent);
+                                      Mouse.PositionEventEntry::process);
+        GLFW.glfwSetCursorPosCallback(GLFW.glfwGetCurrentContext(),
+                Mouse.PositionInstantEventQueueEntry::process);
     }
 
     //in framebuffer texels
@@ -132,22 +234,12 @@ public final class Mouse {
 
     public static Event.Hub.Closeable positionEventHub(
             BiPredicate<Double, Double> positionPredicate) {
-        final List<PositionEventEntry> ENTRIES = Mouse.POSITION_EVENT_ENTRIES;
-        final PositionEventEntry ENTRY = new PositionEventEntry(
-                positionPredicate, ENTRIES.size());
-        ENTRIES.add(ENTRY);
+        final PositionEventEntry ENTRY =
+                PositionEventEntry.of(positionPredicate);
         return new Event.Hub.Closeable() {
             @Override
             public void close() {
-                if (ENTRY.SIGNAL.getClosureState() == ClosureState.CLOSED) {
-                    return;
-                }
-
-                ENTRY.SIGNAL.close();
-                final int LAST_INDEX = ENTRIES.size() - 1;
-                Collections.swap(ENTRIES, ENTRY.index, LAST_INDEX);
-                ENTRIES.get(ENTRY.index).index = ENTRY.index;
-                ENTRIES.remove(LAST_INDEX);
+                ENTRY.close();
             }
 
             @Override
@@ -163,6 +255,43 @@ public final class Mouse {
             @Override
             public Event event() {
                 return ENTRY.SIGNAL.getHub().event();
+            }
+
+            @Override
+            public ClosureState getClosureState() {
+                return ENTRY.SIGNAL.getHub().getClosureState();
+            }
+        };
+    }
+
+    public static InstantEventQueue.Hub.Closeable positionInstantEventQueueHub(
+            BiPredicate<Double, Double> positionPredicate) {
+        final PositionInstantEventQueueEntry ENTRY =
+                PositionInstantEventQueueEntry.of(positionPredicate);
+        return new InstantEventQueue.Hub.Closeable() {
+            @Override
+            public void close() {
+                ENTRY.close();
+            }
+
+            @Override
+            public boolean attachListener(InstantEventQueue.Listener listener) {
+                return ENTRY.SIGNAL.getHub().attachListener(listener);
+            }
+
+            @Override
+            public void detachListener(InstantEventQueue.Listener listener) {
+                ENTRY.SIGNAL.getHub().detachListener(listener);
+            }
+
+            @Override
+            public InstantEventQueue unbounded() {
+                return ENTRY.SIGNAL.getHub().unbounded();
+            }
+
+            @Override
+            public InstantEventQueue.Builder eventBuilder() {
+                return ENTRY.SIGNAL.getHub().eventBuilder();
             }
 
             @Override
@@ -207,11 +336,6 @@ public final class Mouse {
         Mouse.Button.fromId(buttonId)
                     .ABSTRACT_BUTTON
                     .registerEvent(STATE, TIMESTAMP);
-    }
-
-    private static void processPositionEvent(long window, double x, double y) {
-        final Position POS = Mouse.screenToFramebufferPosition(x, y);
-        Mouse.POSITION_EVENT_ENTRIES.forEach(e -> e.process(POS));
     }
 
     private static Position screenToFramebufferPosition(double x, double y) {
