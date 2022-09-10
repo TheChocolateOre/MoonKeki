@@ -3,6 +3,7 @@ package moonkeki.app.input;
 import moonkeki.app.events.ClosureState;
 import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEventQueue;
+import moonkeki.app.events.IntervalEvent;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.geom.AffineTransform;
@@ -67,7 +68,7 @@ public final class Mouse {
 
 
         @Override
-        public Event.Hub eventHub(State triggerState) {
+        public IntervalEvent.Hub eventHub(State triggerState) {
             return this.ABSTRACT_BUTTON.eventHub(triggerState);
         }
 
@@ -244,22 +245,22 @@ public final class Mouse {
 
             @Override
             public boolean attachListener(Event.Listener listener) {
-                return ENTRY.SIGNAL.getHub().attachListener(listener);
+                return ENTRY.SIGNAL.hub().attachListener(listener);
             }
 
             @Override
             public void detachListener(Event.Listener listener) {
-                ENTRY.SIGNAL.getHub().detachListener(listener);
+                ENTRY.SIGNAL.hub().detachListener(listener);
             }
 
             @Override
             public Event event() {
-                return ENTRY.SIGNAL.getHub().event();
+                return ENTRY.SIGNAL.hub().event();
             }
 
             @Override
             public ClosureState getClosureState() {
-                return ENTRY.SIGNAL.getHub().getClosureState();
+                return ENTRY.SIGNAL.hub().getClosureState();
             }
         };
     }

@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-@Deprecated
+@Deprecated(forRemoval = true)
 public interface IntervalEventQueue extends Event {
 
     record Interval(Instant startIncluded, Instant endExcluded) {
@@ -260,7 +260,7 @@ public interface IntervalEventQueue extends Event {
             }
 
             @Override
-            public void clear() {
+            public void reset() {
                 this.clear(true);
             }
 
@@ -750,7 +750,7 @@ public interface IntervalEventQueue extends Event {
         public void clear(boolean headIncluded) {}
 
         @Override
-        public void clear() {}
+        public void reset() {}
 
         @Override
         public ConnectionState getConnectionState() {

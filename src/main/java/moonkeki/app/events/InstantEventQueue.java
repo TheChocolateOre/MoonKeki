@@ -7,6 +7,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
+@Deprecated(forRemoval = true)
 public interface InstantEventQueue extends Event {
 
     interface Builder {
@@ -270,7 +271,7 @@ public interface InstantEventQueue extends Event {
             }
 
             @Override
-            public void clear() {
+            public void reset() {
                 this.LOCK.lock();
                 try {
                     this.timestamps.clear();
@@ -594,7 +595,7 @@ public interface InstantEventQueue extends Event {
         }
 
         @Override
-        public void clear() {}
+        public void reset() {}
 
         @Override
         public ConnectionState getConnectionState() {

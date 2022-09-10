@@ -2,6 +2,7 @@ package moonkeki.app.input;
 
 import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEventQueue;
+import moonkeki.app.events.IntervalEvent;
 import org.lwjgl.glfw.GLFW;
 
 import java.time.Instant;
@@ -136,11 +137,12 @@ public final class Keyboard {
         }
 
         @Override
-        public Event.Hub eventHub(State triggerState) {
+        public IntervalEvent.Hub eventHub(State triggerState) {
             return this.ABSTRACT_BUTTON != null ?
                    this.ABSTRACT_BUTTON.eventHub(triggerState) :
-                   Event.Hub.EMPTY;
+                    IntervalEvent.Hub.EMPTY;
         }
+
 
         @Override
         public InstantEventQueue.Hub instantEventQueueHub(State triggerState) {
@@ -152,7 +154,8 @@ public final class Keyboard {
         @Override
         public State getState() {
             return (GLFW.glfwGetKey(GLFW.glfwGetCurrentContext(), this.ID) ==
-                    GLFW.GLFW_PRESS) ? Button.State.PRESSED :
+                    GLFW.GLFW_PRESS) ?
+                    Button.State.PRESSED :
                     Button.State.RELEASED;
         }
 
