@@ -140,29 +140,25 @@ public interface IntervalEvent extends Event {
                     return;
                 }
 
-                HUB.EVENT_LOCK.lock();
+                HUB.signal().LOCK.lock();
                 try {
                     HUB.EVENTS.remove(this);
                     this.hub = null;
                 } finally {
-                    HUB.EVENT_LOCK.unlock();
+                    HUB.signal().LOCK.unlock();
                 }
             }
         }
 
         private abstract class AbstractHub implements IntervalEvent.Hub {
-            @Deprecated
-            final Lock EVENT_LOCK = new ReentrantLock(true);
             //only of positive capacity
             final Set<EventImpl> EVENTS = new LinkedHashSet<>();
-            @Deprecated
-            final Lock LISTENER_LOCK = new ReentrantLock(true);
             final Set<IntervalEvent.Listener> LISTENERS = new LinkedHashSet<>();
             volatile Instant headTimestamp;
 
             @Override
             public IntervalEvent event() {
-                this.EVENT_LOCK.lock();
+                Signal.this.LOCK.lock();
                 try {
                     if (this.getClosureState() == ClosureState.CLOSED) {
                         return IntervalEvent.EMPTY;
@@ -172,7 +168,7 @@ public interface IntervalEvent extends Event {
                     this.EVENTS.add(EVENT);
                     return EVENT;
                 } finally {
-                    this.EVENT_LOCK.unlock();
+                    Signal.this.LOCK.unlock();
                 }
             }
 
@@ -191,7 +187,7 @@ public interface IntervalEvent extends Event {
             }
 
             public boolean attachListener(IntervalEvent.Listener listener) {
-                this.LISTENER_LOCK.lock();
+                Signal.this.LOCK.lock();
                 try {
                     if (this.getClosureState() == ClosureState.CLOSED) {
                         return false;
@@ -199,19 +195,19 @@ public interface IntervalEvent extends Event {
                     this.LISTENERS.add(listener);
                     return true;
                 } finally {
-                    this.LISTENER_LOCK.unlock();
+                    Signal.this.LOCK.unlock();
                 }
             }
 
             public void detachListener(IntervalEvent.Listener listener) {
-                this.LISTENER_LOCK.lock();
+                Signal.this.LOCK.lock();
                 try {
                     if (this.getClosureState() == ClosureState.CLOSED) {
                         return;
                     }
                     this.LISTENERS.remove(listener);
                 } finally {
-                    this.LISTENER_LOCK.unlock();
+                    Signal.this.LOCK.unlock();
                 }
             }
 
@@ -245,6 +241,8 @@ public interface IntervalEvent extends Event {
                 this.EVENTS.clear();
                 this.LISTENERS.clear();
             }
+
+            abstract Signal signal();
         }
 
         //used for everything
@@ -256,11 +254,19 @@ public interface IntervalEvent extends Event {
             public Hub negate() {
                 return Signal.this.NEGATED_HUB;
             }
+            @Override
+            Signal signal() {
+                return Signal.this;
+            }
         };
         private final AbstractHub NEGATED_HUB = new AbstractHub() {
             @Override
             public Hub negate() {
                 return Signal.this.HUB;
+            }
+            @Override
+            Signal signal() {
+                return Signal.this;
             }
         };
         private volatile boolean closed;
@@ -273,7 +279,7 @@ public interface IntervalEvent extends Event {
                     return;
                 }
 
-                this.stop(NOW);
+                this.start(NOW);
             } finally {
                 this.LOCK.unlock();
             }
@@ -456,55 +462,6 @@ public interface IntervalEvent extends Event {
     }
 
     final class CompositeBuilder {
-        @Deprecated
-        private static abstract class AbstractComposite {
-            final int SIZE;
-            int started;
-
-            AbstractComposite(Collection<? extends IntervalEvent.Hub> hubs) {
-                this.SIZE = hubs.size();
-                final Lock LOCK = new ReentrantLock(true);
-                final IntervalEvent.Signal SIGNAL = new IntervalEvent.Signal();
-
-                for (var h : hubs) {
-                    final IntervalEvent.Listener LISTENER =
-                            new IntervalEvent.Listener() {
-                        @Override
-                        public void onStart(Instant timestamp) {
-                            LOCK.lock();
-                            try {
-                                AbstractComposite.this.started++;
-                                AbstractComposite.this.onAdd();
-                            } finally {
-                                LOCK.unlock();
-                            }
-                        }
-                        @Override
-                        public void onStop(Instant timestamp) {
-                            LOCK.lock();
-                            try {
-                                AbstractComposite.this.started--;
-                                AbstractComposite.this.onRemove();
-                            } finally {
-                                LOCK.unlock();
-                            }
-                        }
-                        @Override
-                        public void onClose(Instant timestamp) {
-                            SIGNAL.closeElseNow(timestamp);
-                        }
-                    };
-                    if (!h.attachListener(LISTENER)) {
-                        SIGNAL.close();
-                        break;
-                    }
-                }
-            }
-
-            abstract void onAdd();
-            abstract void onRemove();
-        }
-
         private sealed class Composite {
             sealed class Listener implements IntervalEvent.Listener {
                 @Override
@@ -642,96 +599,6 @@ public interface IntervalEvent extends Event {
                     hub.detachListener(LISTENER_ITR.next());
                 }
             }
-        }
-
-        //onChange: returns true if the signal should be started, and false if
-        //          it should be stopped
-        @Deprecated
-        private static IntervalEvent.Hub.Closeable composite(
-                Collection<? extends IntervalEvent.Hub> hubs,
-                BiPredicate<Integer, Integer> onChange) {
-            final class ListenerImpl implements IntervalEvent.Listener {
-                final Lock LOCK = new ReentrantLock(true);
-                final IntervalEvent.Signal SIGNAL = new IntervalEvent.Signal();
-                int happening;
-
-                @Override
-                public void onStart(Instant timestamp) {
-                    this.LOCK.lock();
-                    try {
-                        this.happening++;
-                        this.refresh(timestamp);
-                    } finally {
-                        this.LOCK.unlock();
-                    }
-                }
-
-                @Override
-                public void onStop(Instant timestamp) {
-                    this.LOCK.lock();
-                    try {
-                        this.happening--;
-                        this.refresh(timestamp);
-                    } finally {
-                        this.LOCK.unlock();
-                    }
-                }
-
-                @Override
-                public void onClose(Instant timestamp) {
-                    this.SIGNAL.closeElseNow(timestamp);
-                }
-
-                private void refresh(Instant timestamp) {
-                    if (onChange.test(this.happening, hubs.size())) {
-                        this.SIGNAL.startElseNow(timestamp);
-                    } else {
-                        this.SIGNAL.stopElseNow(timestamp);
-                    }
-                }
-            }
-            final ListenerImpl LISTENER = new ListenerImpl();
-            hubs.forEach(h -> h.attachListener(LISTENER));
-            return new Hub.Closeable() {
-                @Override
-                public void close() {LISTENER.SIGNAL.close();}
-                @Override
-                public void closeElseNow(Instant timestamp) {
-                    LISTENER.SIGNAL.closeElseNow(timestamp);
-                }
-                @Override
-                public void closeElseThrow(Instant timestamp) {
-                    LISTENER.SIGNAL.closeElseThrow(timestamp);
-                }
-                @Override
-                public boolean attachListener(Listener listener) {
-                    return LISTENER.SIGNAL.hub().attachListener(listener);
-                }
-                @Override
-                public void detachListener(Listener listener) {
-                    LISTENER.SIGNAL.hub().detachListener(listener);
-                }
-                @Override
-                public IntervalEvent event() {
-                    return LISTENER.SIGNAL.hub().event();
-                }
-                @Override
-                public Hub negate() {
-                    return LISTENER.SIGNAL.hub().negate();
-                }
-                @Override
-                public ClosureState getClosureState() {
-                    return LISTENER.SIGNAL.hub().getClosureState();
-                }
-                @Override
-                public boolean attachListener(Event.Listener listener) {
-                    return LISTENER.SIGNAL.hub().attachListener(listener);
-                }
-                @Override
-                public void detachListener(Event.Listener listener) {
-                    LISTENER.SIGNAL.hub().detachListener(listener);
-                }
-            };
         }
 
         private final Set<IntervalEvent.Hub> HUBS = new LinkedHashSet<>();
