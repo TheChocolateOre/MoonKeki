@@ -2,7 +2,6 @@ package moonkeki.app.input;
 
 import moonkeki.app.events.ClosureState;
 import moonkeki.app.events.Event;
-import moonkeki.app.events.InstantEventQueue;
 import moonkeki.app.events.IntervalEvent;
 import org.lwjgl.glfw.GLFW;
 
@@ -73,11 +72,6 @@ public final class Mouse {
         }
 
         @Override
-        public InstantEventQueue.Hub instantEventQueueHub(State triggerState) {
-            return this.ABSTRACT_BUTTON.instantEventQueueHub(triggerState);
-        }
-
-        @Override
         public State getState() {
             return (GLFW.glfwGetMouseButton(GLFW.glfwGetCurrentContext(),
                                             this.ID) == GLFW.GLFW_PRESS) ?
@@ -112,22 +106,18 @@ public final class Mouse {
         }
 
         //timestamp can be null
+        //FIXME use a fair lock instead
         synchronized void process(Position pos, Instant timestamp) {
-            if (!this.PREDICATE.test(pos.x, pos.y)) {
-                this.occurredOnPrev = false;
-                return;
+            if (this.PREDICATE.test(pos.x, pos.y)) {
+                this.start(timestamp);
+            } else {
+                this.stop(timestamp);
             }
-
-            if (this.occurredOnPrev) {
-                return;
-            }
-
-            this.trigger(timestamp);
-            this.occurredOnPrev = true;
         }
 
         //timestamp can be null
-        abstract void trigger(Instant timestamp);
+        abstract void start(Instant timestamp);
+        abstract void stop(Instant timestamp);
         abstract List<AbstractPositionEventEntry> getEntries();
     }
 
@@ -144,11 +134,12 @@ public final class Mouse {
         }
 
         static void process(long window, double x, double y) {
+            final Instant NOW = Instant.now();
             final Position POS = Mouse.screenToFramebufferPosition(x, y);
-            PositionEventEntry.ENTRIES.forEach(e -> e.process(POS, null));
+            PositionEventEntry.ENTRIES.forEach(e -> e.process(POS, NOW));
         }
 
-        final Event.Signal SIGNAL = new Event.Signal();
+        final IntervalEvent.Signal SIGNAL = new IntervalEvent.Signal();
 
         PositionEventEntry(BiPredicate<Double, Double> predicate, int index) {
             super(predicate, index);
@@ -171,8 +162,13 @@ public final class Mouse {
         }
 
         @Override
-        void trigger(Instant timestamp) {
-            this.SIGNAL.trigger();
+        void start(Instant timestamp) {
+            this.SIGNAL.startElseNow(timestamp);
+        }
+
+        @Override
+        void stop(Instant timestamp) {
+            this.SIGNAL.stopElseNow(timestamp);
         }
 
         @Override
@@ -181,58 +177,11 @@ public final class Mouse {
         }
     }
 
-    private static final class PositionInstantEventQueueEntry extends
-            AbstractPositionEventEntry {
-        static final List<AbstractPositionEventEntry> ENTRIES =
-                new ArrayList<>();
-
-        static PositionInstantEventQueueEntry of(
-                BiPredicate<Double, Double> predicate) {
-            final PositionInstantEventQueueEntry ENTRY =
-                    new PositionInstantEventQueueEntry(predicate,
-                    PositionInstantEventQueueEntry.ENTRIES.size());
-            PositionInstantEventQueueEntry.ENTRIES.add(ENTRY);
-            return ENTRY;
-        }
-
-        static void process(long window, double x, double y) {
-            final Instant NOW = Instant.now();
-            final Position POS = Mouse.screenToFramebufferPosition(x, y);
-            PositionInstantEventQueueEntry.ENTRIES.forEach(
-                    e -> e.process(POS, NOW));
-        }
-
-        final InstantEventQueue.Signal SIGNAL = new InstantEventQueue.Signal();
-
-        PositionInstantEventQueueEntry(BiPredicate<Double, Double> predicate,
-                                       int index) {
-            super(predicate, index);
-        }
-
-        @Override
-        public void close() {
-            this.SIGNAL.close();
-            this.remove();
-        }
-
-        @Override
-        void trigger(Instant timestamp) {
-            this.SIGNAL.triggerElseNow(timestamp);
-        }
-
-        @Override
-        List<AbstractPositionEventEntry> getEntries() {
-            return PositionInstantEventQueueEntry.ENTRIES;
-        }
-    }
-
     static {
         GLFW.glfwSetMouseButtonCallback(GLFW.glfwGetCurrentContext(),
                                         Mouse::processButtonEvent);
         GLFW.glfwSetCursorPosCallback(GLFW.glfwGetCurrentContext(),
                                       Mouse.PositionEventEntry::process);
-        GLFW.glfwSetCursorPosCallback(GLFW.glfwGetCurrentContext(),
-                Mouse.PositionInstantEventQueueEntry::process);
     }
 
     //in framebuffer texels
@@ -243,11 +192,11 @@ public final class Mouse {
         return Mouse.screenToFramebufferPosition(xCache[0], yCache[0]);
     }
 
-    public static Event.Hub.Closeable positionEventHub(
+    public static IntervalEvent.Hub.Closeable positionEventHub(
             BiPredicate<Double, Double> positionPredicate) {
         final PositionEventEntry ENTRY =
                 PositionEventEntry.of(positionPredicate);
-        return new Event.Hub.Closeable() {
+        return new IntervalEvent.Hub.Closeable() {
             @Override
             public void close() {
                 ENTRY.close();
@@ -274,50 +223,28 @@ public final class Mouse {
             }
 
             @Override
-            public Event event() {
+            public boolean attachListener(IntervalEvent.Listener listener) {
+                return ENTRY.SIGNAL.hub().attachListener(listener);
+            }
+
+            @Override
+            public void detachListener(IntervalEvent.Listener listener) {
+                ENTRY.SIGNAL.hub().detachListener(listener);
+            }
+
+            @Override
+            public IntervalEvent.Hub negate() {
+                return ENTRY.SIGNAL.hub().negate();
+            }
+
+            @Override
+            public IntervalEvent event() {
                 return ENTRY.SIGNAL.hub().event();
             }
 
             @Override
             public ClosureState getClosureState() {
                 return ENTRY.SIGNAL.hub().getClosureState();
-            }
-        };
-    }
-
-    public static InstantEventQueue.Hub.Closeable positionInstantEventQueueHub(
-            BiPredicate<Double, Double> positionPredicate) {
-        final PositionInstantEventQueueEntry ENTRY =
-                PositionInstantEventQueueEntry.of(positionPredicate);
-        return new InstantEventQueue.Hub.Closeable() {
-            @Override
-            public void close() {
-                ENTRY.close();
-            }
-
-            @Override
-            public boolean attachListener(InstantEventQueue.Listener listener) {
-                return ENTRY.SIGNAL.getHub().attachListener(listener);
-            }
-
-            @Override
-            public void detachListener(InstantEventQueue.Listener listener) {
-                ENTRY.SIGNAL.getHub().detachListener(listener);
-            }
-
-            @Override
-            public InstantEventQueue unbounded() {
-                return ENTRY.SIGNAL.getHub().unbounded();
-            }
-
-            @Override
-            public InstantEventQueue.Builder eventBuilder() {
-                return ENTRY.SIGNAL.getHub().eventBuilder();
-            }
-
-            @Override
-            public ClosureState getClosureState() {
-                return ENTRY.SIGNAL.getHub().getClosureState();
             }
         };
     }

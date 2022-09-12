@@ -1,7 +1,5 @@
 package moonkeki.app.input;
 
-import moonkeki.app.events.Event;
-import moonkeki.app.events.InstantEventQueue;
 import moonkeki.app.events.IntervalEvent;
 
 public interface Button {
@@ -18,8 +16,6 @@ public interface Button {
     default boolean isReleased() {return this.getState() == State.RELEASED;}
 
     IntervalEvent.Hub eventHub(State triggerState);
-    @Deprecated(forRemoval = true)
-    InstantEventQueue.Hub instantEventQueueHub(State triggerState);
     State getState();
 
 }

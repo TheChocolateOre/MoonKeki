@@ -1,6 +1,5 @@
 package moonkeki.app.input;
 
-import moonkeki.app.events.InstantEventQueue;
 import moonkeki.app.events.IntervalEvent;
 import org.lwjgl.glfw.GLFW;
 
@@ -140,14 +139,6 @@ public final class Keyboard {
             return this.ABSTRACT_BUTTON != null ?
                    this.ABSTRACT_BUTTON.eventHub(triggerState) :
                     IntervalEvent.Hub.EMPTY;
-        }
-
-
-        @Override
-        public InstantEventQueue.Hub instantEventQueueHub(State triggerState) {
-            return this.ABSTRACT_BUTTON != null ?
-                   this.ABSTRACT_BUTTON.instantEventQueueHub(triggerState) :
-                   InstantEventQueue.Hub.EMPTY;
         }
 
         @Override
