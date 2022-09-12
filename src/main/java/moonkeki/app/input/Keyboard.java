@@ -1,6 +1,5 @@
 package moonkeki.app.input;
 
-import moonkeki.app.events.Event;
 import moonkeki.app.events.InstantEventQueue;
 import moonkeki.app.events.IntervalEvent;
 import org.lwjgl.glfw.GLFW;

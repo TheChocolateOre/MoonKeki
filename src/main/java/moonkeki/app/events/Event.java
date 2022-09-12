@@ -6,6 +6,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public interface Event {
 
@@ -19,6 +21,8 @@ public interface Event {
         interface Closeable extends Hub, AutoCloseable {
             @Override
             void close();
+            void closeElseNow(Instant timestamp);
+            void closeElseThrow(Instant timestamp);
         }
 
         Hub.Closeable EMPTY = new Closeable() {
@@ -32,6 +36,10 @@ public interface Event {
             public ClosureState getClosureState() {return ClosureState.CLOSED;}
             @Override
             public void close() {}
+            @Override
+            public void closeElseNow(Instant timestamp) {}
+            @Override
+            public void closeElseThrow(Instant timestamp) {}
             @Override
             public String toString() {return "Event.Hub.EMPTY";}
         };
@@ -295,12 +303,12 @@ public interface Event {
         }
     }
 
-    final class CompositeOR {
+    final class CompositeBuilder {
         private final Set<Event.Hub> HUBS = new HashSet<>();
 
-        private CompositeOR() {}
+        private CompositeBuilder() {}
 
-        public CompositeOR add(Event.Hub hub) {
+        public CompositeBuilder add(Event.Hub hub) {
             if (hub.getClosureState() == ClosureState.UNDETERMINED) {
                 this.HUBS.add(hub);
             }
@@ -312,63 +320,61 @@ public interface Event {
                 return Event.Hub.EMPTY;
             }
 
+            final List<Event.Hub> HUBS = List.copyOf(this.HUBS);
             final Event.Signal SIGNAL = new Signal();
-            final AtomicInteger COUNTER = new AtomicInteger(this.HUBS.size());
-            final Runnable DECREMENT = () -> {
-                if (COUNTER.decrementAndGet() == 0) {
-                    SIGNAL.close();
+            final BiConsumer<Instant, Event.Listener> CLOSE = (t, l) -> {
+                SIGNAL.closeElseNow(t);
+                HUBS.forEach(h -> h.detachListener(l));
+            };
+            final Event.Listener LISTENER = new Event.Listener() {
+                @Override
+                public void onTrigger(Instant timestamp) {
+                    SIGNAL.triggerElseNow(timestamp);
+                }
+
+                @Override
+                public void onClose(Instant timestamp) {
+                    CLOSE.accept(timestamp, this);
                 }
             };
-            this.HUBS.forEach(h -> {
-                Event.Listener LISTENER = new Event.Listener() {
-                    @Override
-                    public void onTrigger(Instant timestamp) {
-                        SIGNAL.triggerElseNow(timestamp);
-                    }
-
-                    @Override
-                    public void onClose(Instant timestamp) {
-                        DECREMENT.run();
-                    }
-                };
+            for (var h : HUBS) {
                 if (!h.attachListener(LISTENER)) {
-                    DECREMENT.run();
+                    CLOSE.accept(Instant.now(), LISTENER);
+                    break;
                 }
-            });
+            }
 
             return new Event.Hub.Closeable() {
-                final Event.Hub HUB = SIGNAL.HUB;
-
                 @Override
                 public boolean attachListener(Event.Listener listener) {
-                    return this.HUB.attachListener(listener);
+                    return SIGNAL.HUB.attachListener(listener);
                 }
-
                 @Override
                 public void detachListener(Event.Listener listener) {
-                    this.HUB.detachListener(listener);
+                    SIGNAL.HUB.detachListener(listener);
                 }
-
                 @Override
-                public Event event() {
-                    return this.HUB.event();
-                }
-
+                public Event event() {return SIGNAL.HUB.event();}
                 @Override
                 public ClosureState getClosureState() {
-                    return this.HUB.getClosureState();
+                    return SIGNAL.HUB.getClosureState();
                 }
-
                 @Override
-                public void close() {
-                    SIGNAL.close();
+                public void close() {SIGNAL.close();}
+                @Override
+                public void closeElseNow(Instant timestamp) {
+                    SIGNAL.closeElseNow(timestamp);
+                }
+                @Override
+                public void closeElseThrow(Instant timestamp) {
+                    SIGNAL.closeElseThrow(timestamp);
                 }
             };
         }
     }
 
-    static CompositeOR compositeOR() {
-        return new CompositeOR();
+    static CompositeBuilder compositeORBuilder() {
+        return new CompositeBuilder();
     }
 
     Event EMPTY = new Event() {

@@ -160,6 +160,16 @@ public final class Mouse {
             this.remove();
         }
 
+        public void closeElseNow(Instant timestamp) {
+            this.SIGNAL.closeElseNow(timestamp);
+            this.remove();
+        }
+
+        public void closeElseThrow(Instant timestamp) {
+            this.SIGNAL.closeElseThrow(timestamp);
+            this.remove();
+        }
+
         @Override
         void trigger(Instant timestamp) {
             this.SIGNAL.trigger();
@@ -241,6 +251,16 @@ public final class Mouse {
             @Override
             public void close() {
                 ENTRY.close();
+            }
+
+            @Override
+            public void closeElseNow(Instant timestamp) {
+                ENTRY.closeElseNow(timestamp);
+            }
+
+            @Override
+            public void closeElseThrow(Instant timestamp) {
+                ENTRY.closeElseThrow(timestamp);
             }
 
             @Override
