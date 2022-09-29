@@ -1,3 +1,5 @@
+import org.gradle.internal.os.OperatingSystem
+
 plugins {
     id 'java-library'
     id 'application'
@@ -7,7 +9,20 @@ group 'com.github.thechocolateore'
 version '0.1.0-SNAPSHOT'
 
 project.ext.lwjglVersion = "3.3.2-SNAPSHOT"
-project.ext.lwjglNatives = "natives-windows"
+switch (OperatingSystem.current()) {
+    case OperatingSystem.LINUX:
+        def osArch = System.getProperty("os.arch")
+        project.ext.lwjglNatives = osArch.startsWith("arm") || osArch.startsWith("aarch64")
+                ? "natives-linux-${osArch.contains("64") || osArch.startsWith("armv8") ? "arm64" : "arm32"}"
+                : "natives-linux"
+        break
+    case OperatingSystem.WINDOWS:
+        def osArch = System.getProperty("os.arch")
+        project.ext.lwjglNatives = osArch.contains("64")
+                ? "natives-windows${osArch.startsWith("aarch64") ? "-arm64" : ""}"
+                : "natives-windows"
+        break
+}
 
 repositories {
     mavenCentral()
