@@ -173,7 +173,7 @@ language, that truly lives to its **general purpose** attribute. There is no
 reason why you shouldn't create games with Java.
 
 ### What version of Java this framework uses?
-The latest there is with **previews enabled** (happens to be **18** atm). I don't 
+The latest there is with **previews enabled** (happens to be **19** atm). I don't 
 care about LTS versions, sure they have value, but I think the best LTS is 
 staying with the latest version.
 
