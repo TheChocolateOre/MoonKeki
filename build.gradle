@@ -6,11 +6,12 @@ plugins {
 group 'com.github.thechocolateore'
 version '0.1.0-SNAPSHOT'
 
-project.ext.lwjglVersion = "3.3.1"
+project.ext.lwjglVersion = "3.3.2-SNAPSHOT"
 project.ext.lwjglNatives = "natives-windows"
 
 repositories {
     mavenCentral()
+    maven { url "https://oss.sonatype.org/content/repositories/snapshots/" }
 }
 
 dependencies {
