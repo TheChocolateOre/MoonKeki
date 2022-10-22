@@ -132,9 +132,9 @@ for **Z** **G**arbage **C**ollector, and it is a garbage collector that has
 **max pause** times of **<1ms** (the actual number is around **200μs** (0.2ms)) 
 (a 60fps game spends 16.6ms on each frame) and **average** of around **30μs** 
 (0.03ms). And that's still not all, ZGC most likely will become 
-[generational](https://en.wikipedia.org/wiki/Tracing_garbage_collection#Generational_GC_(ephemeral_GC)), 
-tracking a young and old generation, that is, short-lived objects should be very
-easy and fast to garbage collect, allowing for even greater allocation rates.
+[generational](https://openjdk.org/jeps/8272979), tracking a young and old 
+generation, that is, short-lived objects should be very easy and fast to garbage
+collect, allowing for even greater allocation rates.
 
 With ZGC in mind, use Java, create as many objects as you want, even in the main
 game loop, don't reuse them, drop your object pools, create short-lived objects
