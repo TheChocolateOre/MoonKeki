@@ -5,7 +5,7 @@ import java.awt.geom.NoninvertibleTransformException;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-public interface OriginLocus extends Locus {
+public interface OriginLocus extends Locus, Translatable {
 
     interface InvertibleUnaryOperator<T> extends UnaryOperator<T> {
         static <T> InvertibleUnaryOperator<T> of(UnaryOperator<T> operator,
@@ -49,7 +49,7 @@ public interface OriginLocus extends Locus {
                                    .build();
     }
 
-    //If locus is already an OriginLocus it re-attaches the new origin
+    //If locus is already an PredicateOriginLocus it re-attaches the new origin
     static OriginLocus attachOrigin(Locus locus, Point origin) {
         if (locus instanceof PredicateOriginLocus o) {
             return o.reattachOrigin(origin);
@@ -57,50 +57,43 @@ public interface OriginLocus extends Locus {
         return OriginLocus.of(locus.toPredicate(), origin);
     }
 
-    Point origin();
-
+    @Override
     default OriginLocus reattachOrigin(Point origin) {
         return this.origin().equals(origin) ?
                this :
                OriginLocus.attachOrigin(this, origin);
     }
 
-    default double x() {
-        return this.origin().x();
-    }
-
-    default double y() {
-        return this.origin().y();
-    }
-
+    @Override
     default OriginLocus position(Point point) {
         final double dx = point.x() - this.x();
         final double dy = point.y() - this.y();
         return this.map(AffineTransform.getTranslateInstance(dx, dy));
     }
 
-    default OriginLocus positionAtCartesianOrigin() {
-        return this.position(Point.CARTESIAN_ORIGIN);
-    }
-
+    @Override
     default OriginLocus positionX(double x) {
-        return this.position(new Point(x, this.y()));
+        return (OriginLocus) Translatable.super.positionX(x);
     }
 
+    @Override
     default OriginLocus positionY(double y) {
-        return this.position(new Point(this.x(), y));
+        return (OriginLocus) Translatable.super.positionY(y);
     }
 
+    @Override
     default OriginLocus translate(double xAmount, double yAmount) {
-        return this.position(new Point(this.x() + xAmount, this.y() + yAmount));
+        return (OriginLocus) Translatable.super.translate(xAmount, yAmount);
     }
 
+    @Override
     default OriginLocus translateX(double amount) {
-        return this.translate(amount, 0.0);
+        return (OriginLocus) Translatable.super.translateX(amount);
     }
 
+    @Override
     default OriginLocus translateY(double amount) {
-        return this.translate(0.0, amount);
+        return (OriginLocus) Translatable.super.translateY(amount);
     }
 
     //covariant override
