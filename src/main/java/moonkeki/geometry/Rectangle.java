@@ -136,7 +136,6 @@ public interface Rectangle extends Translatable {
         return this.withSize(this.width(), height);
     }
 
-    //need an anchor point - start
     default Rectangle withSize(double width, double height, Corner anchor) {
         return switch (anchor) {
             case MIN_X_MIN_Y -> this.withSize(width, height);
@@ -221,7 +220,6 @@ public interface Rectangle extends Translatable {
     default Rectangle scaleHeight(double factor, Side anchor) {
         return this.withHeight(this.height() * factor, anchor);
     }
-    //need an anchor point - start
 
     default Rectangle stretchCornerTo(Corner corner, Point dest) {
         return switch (corner) {
