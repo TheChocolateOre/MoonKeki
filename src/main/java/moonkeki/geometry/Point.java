@@ -7,6 +7,16 @@ public record Point(double x, double y) implements OriginLocus {
 
     public static final Point CARTESIAN_ORIGIN = new Point(0, 0);
 
+    public Point {
+        if (!Double.isFinite(x)) {
+            throw new IllegalArgumentException("Argument x must be finite.");
+        }
+
+        if (!Double.isFinite(y)) {
+            throw new IllegalArgumentException("Argument y must be finite.");
+        }
+    }
+
     @Override
     public boolean intersects(Point point) {
         return this.equals(point);
@@ -38,4 +48,28 @@ public record Point(double x, double y) implements OriginLocus {
         return this.map((UnaryOperator<Point>) transform);
     }
 
+    @Override
+    public Point positionX(double x) {
+        return (Point) OriginLocus.super.positionX(x);
+    }
+
+    @Override
+    public Point positionY(double y) {
+        return (Point) OriginLocus.super.positionY(y);
+    }
+
+    @Override
+    public Point translate(double xAmount, double yAmount) {
+        return (Point) OriginLocus.super.translate(xAmount, yAmount);
+    }
+
+    @Override
+    public Point translateX(double amount) {
+        return (Point) OriginLocus.super.translateX(amount);
+    }
+
+    @Override
+    public Point translateY(double amount) {
+        return (Point) OriginLocus.super.translateY(amount);
+    }
 }
