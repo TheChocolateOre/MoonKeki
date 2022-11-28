@@ -181,7 +181,8 @@ public final class Keyboard {
     }
 
     //A Button that is not in Key enum
-    private static final class LocalButton extends AbstractButton implements Keyboard.Button {
+    private static final class LocalButton extends AbstractButton implements
+            Keyboard.Button {
         final int LOCAL_ID;
         volatile Button.State state;
 
