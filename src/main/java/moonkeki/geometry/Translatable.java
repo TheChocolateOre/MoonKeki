@@ -23,7 +23,9 @@ public interface Translatable {
                 return new Impl(point, this.translatable().translate(dx, dy));
             }
         }
-        return new Impl(origin, this);
+        return this instanceof Impl(Point o, Translatable t) ?
+               new Impl(origin, t) :
+               new Impl(origin, this);
     }
 
     default double x() {
