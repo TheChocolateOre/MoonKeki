@@ -156,10 +156,10 @@ _value types_ that have a good chance of getting flattened in memory, keeping
 the cache hot.
 3. [Project Loom](https://openjdk.org/projects/loom/) transforms the use of
 threads into a better experience by making them 
-[lightweight](https://openjdk.org/jeps/425), so we can have them in the millions
+[lightweight](https://openjdk.org/jeps/436), so we can have them in the millions
 instead of few-thousands, effectively rendering thread pools obsolete along its 
 way. One more of its fruits is 
-[structured concurrency](https://openjdk.org/jeps/428), making it easier to 
+[structured concurrency](https://openjdk.org/jeps/437), making it easier to 
 write and reason about multithreaded programs.
 4. [Project Amber](https://openjdk.org/projects/amber/) increases productivity 
 and makes your code easier to read and maintain. Looking back on your old code,
@@ -199,7 +199,7 @@ established, it just needs to mature a little. I encourage you to try it, your
 feedback is greatly appreciated!
 
 ### How to use this software?
-For now, you have to git clone or copy the code. Don't forget to use Java 18
+For now, you have to git clone or copy the code. Don't forget to use Java 19
 with preview features enabled. Also, ZGC is not enabled by default, so if you 
 want to use it, and you probably should, then you have to add `-XX:+UseZGC` in
 the VM options. I tried to keep the dependencies as low as possible (check
@@ -224,8 +224,7 @@ Important! Don't use any class unless the .build() in the above code has been
 called! Keep in mind that the `render` package is more mature than the `app`.
 
 ### How to process input?
-Keyboard input is now supported. You can check if a button is being pressed 
-with:
+You can check if a keyboard button is being pressed with:
 ```java
 Keyboard.Key.X.isPressed();
 ```
